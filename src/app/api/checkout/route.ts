@@ -14,9 +14,10 @@ export async function POST(req: NextRequest) {
       address,
       notes,
       items,
+      paymentMethod = 'WHATSAPP', // 'WHATSAPP' | 'MERCADOPAGO'
     } = body;
 
-    // Validation
+    // 1. Validaciones de entrada
     if (!tenantId || typeof tenantId !== 'string') {
       return NextResponse.json(
         { success: false, error: 'Identificador de tienda no válido.' },
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify tenant
+    // 2. Verificar datos de la tienda (Tenant)
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: {
@@ -67,34 +68,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Calculate subtotal and shipping
+    // 3. Cálculos de importes (Server-side)
     const subtotal = items.reduce((sum: number, item: any) => {
-      const q = Number(item.quantity) || 0;
-      const p = Number(item.unitPrice) || 0;
+      const q = Math.max(0, Number(item.quantity) || 0);
+      const p = Math.max(0, Number(item.unitPrice) || 0);
       return sum + q * p;
     }, 0);
 
     const isDelivery = deliveryType === 'DELIVERY';
     let shippingFee = 0;
     if (isDelivery) {
-      const freeThreshold = tenant.freeShippingThreshold || 0;
-      const baseFee = tenant.shippingFee || 0;
-      if (freeThreshold > 0 && subtotal >= freeThreshold) {
-        shippingFee = 0;
-      } else {
-        shippingFee = baseFee;
-      }
+      const freeThreshold = Number(tenant.freeShippingThreshold) || 0;
+      const baseFee = Number(tenant.shippingFee) || 0;
+      shippingFee = (freeThreshold > 0 && subtotal >= freeThreshold) ? 0 : baseFee;
     }
 
     const total = subtotal + shippingFee;
 
-    // Generate consecutive order number (#WEB-1001, etc.)
-    const existingOrdersCount = await prisma.onlineOrder.count({
-      where: { tenantId: tenant.id },
-    });
-    const orderNumber = `#WEB-${1001 + existingOrdersCount}`;
+    // 4. Generación segura de número correlativo de orden (#WEB-XXXX)
+    const randomSuffix = Math.floor(100 + Math.random() * 900);
+    const orderNumber = `#WEB-${Date.now().toString().slice(-4)}${randomSuffix}`;
 
-    // Create OnlineOrder with OnlineOrderItems in transaction
+    // 5. Creación de la orden en DB dentro de una transacción
     const order = await prisma.onlineOrder.create({
       data: {
         orderNumber,
@@ -122,11 +117,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Generate WhatsApp link
+    // 6. Formatear y limpiar teléfono de WhatsApp destino
+    const cleanPhone = (tenant.phone || '').replace(/\D/g, '');
+
+    // 7. Generar enlace de WhatsApp
     const whatsappUrl = generateWhatsAppOrderUrl({
       orderNumber: order.orderNumber,
       storeName: tenant.name,
-      storePhone: tenant.phone,
+      storePhone: cleanPhone,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
       deliveryType: order.deliveryType,
@@ -149,7 +147,7 @@ export async function POST(req: NextRequest) {
       whatsappUrl,
     });
   } catch (error: any) {
-    console.error('Error creating online order:', error);
+    console.error('Error al crear orden de compra online:', error);
     return NextResponse.json(
       { success: false, error: 'Ocurrió un error al procesar el pedido.' },
       { status: 500 }

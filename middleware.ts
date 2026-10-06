@@ -13,20 +13,20 @@ export function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
-    // Dominio raíz esperado (ej: "lvh.me:3001" en dev o "prender.store" en producción)
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lvh.me:3001';
+    // Dominio raíz (en Vercel usará "prender.store", en local "lvh.me:3001")
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'prender.store';
 
-    // Quitar el puerto para trabajar solo con el nombre de dominio (ej: "urbe.lvh.me")
+    // Quitar el puerto para trabajar solo con el nombre de dominio
     const hostWithoutPort = hostname.split(':')[0].toLowerCase();
     const rootWithoutPort = rootDomain.split(':')[0].toLowerCase();
 
-    // Obtener el subdominio quitando el dominio raíz del final
+    // Extraer el subdominio
     let tenantSlug = '';
     if (hostWithoutPort.endsWith(`.${rootWithoutPort}`)) {
         tenantSlug = hostWithoutPort.replace(`.${rootWithoutPort}`, '');
     }
 
-    // Si detecta un subdominio válido (que no sea 'www' ni el dominio raíz solo)
+    // Si detecta un subdominio válido (ej: "urbe")
     if (tenantSlug && tenantSlug !== 'www' && tenantSlug !== rootWithoutPort) {
         // Reescritura interna a /store/[slug]
         url.pathname = `/store/${tenantSlug}${url.pathname}`;
