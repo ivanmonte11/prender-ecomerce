@@ -1,0 +1,1080 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Tenant {
+  id                    String   @id @default(cuid())
+  name                  String
+  slug                  String   @unique
+  category              String
+  createdAt             DateTime @default(now())
+  phone                 String?
+  email                 String?
+  logoUrl               String?
+  address               String?
+  taxId                 String?
+  responsabilidadFiscal String   @default("MONOTRIBUTO")
+  updatedAt             DateTime @updatedAt
+
+  shippingFee Float?   @default(0)
+  freeShippingThreshold Float? @default(0)
+
+  // RELACIONES EXISTENTES
+  users     User[]
+  products  Product[]
+  sales     Sale[]
+  customers Customer[]
+  refunds   Refund[]
+
+  // NUEVAS RELACIONES
+  userTenants    UserTenant[] // Gestión multi-usuario
+  cashRegisters  CashRegister[] // Módulo de caja
+  cashSessions   CashSession[] // Relación opuesta
+  stores         Store[] // Multi-sucursal
+  invitations    Invitation[]
+  modules        Module[]
+  suppliers      Supplier[]
+  stockMovements StockMovement[]
+  fidelityEnabled Boolean @default(true)
+  onlineOrders     OnlineOrder[]
+
+  // Nuevos campos de configuración de fidelidad (con valores por defecto por si las moscas)
+  pointsEarnRate   Float           @default(100.0) // $ X gastados = 1 punto
+  pointRedeemValue Float           @default(1.0) // 1 punto = $ X de descuento
+  loyaltyRewards   LoyaltyReward[]
+
+  planType        PlanType         @default(TRIAL)
+  status          TenantStatus     @default(ACTIVE)
+  trialEndsAt     DateTime?
+  subscription    Subscription?
+  customerCredits CustomerCredit[]
+
+  // 🛒 CONFIGURACIÓN E-COMMERCE / SUSCRIPCIÓN
+  eCommerceEnabled Boolean @default(false)
+  bannerUrl        String?
+
+  gastos Gasto[]
+  shipments Shipment[]
+
+  @@map("tenants")
+}
+
+// ==================== NUEVOS MODELOS ====================
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  ruc         String? // RUC o identificación tributaria
+  isActive    Boolean  @default(true)
+  tenantId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  products       Product[]
+  stockMovements StockMovement[]
+
+  @@unique([tenantId, name])
+  @@map("suppliers")
+}
+
+model StockMovement {
+  id           String       @id @default(cuid())
+  type         MovementType
+  quantity     Int
+  unitCost     Float?
+  totalCost    Float?
+  reason       String?
+  reference    String?
+  movementDate DateTime
+  notes        String?
+
+  // Relations
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+
+  storeId String?
+  store   Store?  @relation(fields: [storeId], references: [id])
+
+  createdBy String // User ID
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // --- ÍNDICES ESTRATÉGICOS ---
+  
+  // 1. Filtrado principal del SaaS por Tenant y Fecha de Movimiento
+  @@index([tenantId, movementDate])
+
+  // 2. Historial de movimientos de un producto específico dentro de un Tenant
+  @@index([productId, movementDate])
+
+  // 3. Filtrado por sucursal específica ( soporta multi-sucursal)
+  @@index([storeId, movementDate])
+
+  // 4. Clave foránea para búsquedas por Tenant (crucial en multi-tenant)
+  @@index([tenantId])
+
+  @@map("stock_movements")
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model UserTenant {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  // 🏪 AGREGAMOS LA RELACIÓN CON LA SUCURSAL (Opcional, usando String?)
+  storeId   String?
+  store     Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  role      UserRole @default(USER)
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Sesiones de caja que ha manejado este usuario
+  cashSessions CashSession[]
+
+  @@unique([userId, tenantId])
+  @@map("user_tenants")
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  USER
+}
+
+model CashRegister {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  // Relación con Store (opcional)
+  storeId String?
+  store   Store?  @relation(fields: [storeId], references: [id])
+
+  // Sesiones de esta caja
+  sessions CashSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ==========================================
+  // --- ÍNDICES ESTRATÉGICOS ---
+  // ==========================================
+
+  // 1. Listar las cajas activas de un Tenant (se ejecuta al iniciar sesión o abrir caja)
+  @@index([tenantId, isActive])
+
+  // 2. Listar las cajas pertenecientes a una sucursal específica
+  @@index([storeId])
+
+  @@map("cash_registers")
+}
+
+model CashSession {
+  id String @id @default(cuid())
+
+  // Relaciones
+  registerId String
+  register   CashRegister @relation(fields: [registerId], references: [id])
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  tenantId   String
+  tenant     Tenant       @relation(fields: [tenantId], references: [id])
+
+  // Relación con UserTenant
+  userTenantId String?
+  userTenant   UserTenant? @relation(fields: [userTenantId], references: [id])
+
+  // Estado de la sesión
+  status CashSessionStatus @default(OPEN)
+
+  // Balances
+  openingBalance  Float
+  closingBalance  Float?
+  expectedBalance Float?
+  difference      Float?
+
+  // Totales por método de pago
+  cashAmount     Float @default(0)
+  cardAmount     Float @default(0)
+  transferAmount Float @default(0)
+  otherAmount    Float @default(0)
+  totalSales     Float @default(0)
+
+  // Timestamps
+  openedAt DateTime  @default(now())
+  closedAt DateTime?
+
+  // Ventas asociadas a esta sesión
+  sales Sale[]
+
+  observations String?
+
+  // NUEVA RELACIÓN
+  creditPayments CreditPayment[]
+
+  // ==========================================
+  // --- ÍNDICES ESTRATÉGICOS PARA OPTIMIZAR CPU ---
+  // ==========================================
+
+  // 1. Verificación instantánea de caja abierta por Tenant, Caja o Usuario
+  @@index([tenantId, status])
+  @@index([registerId, status])
+  @@index([userId, status])
+
+  // 2. Historial de cierres de caja y reportes por rango de fecha
+  @@index([tenantId, openedAt])
+
+  @@map("cash_sessions")
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum FiscalCondition {
+  MONOTRIBUTO
+  INSCRIPTO
+  EXENTO
+}
+
+model Store {
+  id              String          @id @default(cuid())
+  name            String
+  address         String?
+  phone           String?
+  email           String?
+  taxId           String?
+  afipAlias       String?
+  isActive        Boolean         @default(true)
+  fiscalCondition FiscalCondition @default(MONOTRIBUTO)
+  afipPtoVta      Int?
+  afipCertCrt     String?         @db.Text
+  afipCertKey     String?         @db.Text
+
+  tenantId        String
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+
+  // Relaciones
+  invitations     Invitation[]
+  users           User[]
+  cashRegisters   CashRegister[]
+  inventory       StoreInventory[]
+  sales           Sale[]
+  products        Product[]
+  customers       Customer[]
+  modules         Module[]
+  stockMovements  StockMovement[]
+  creditPayments  CreditPayment[]
+  userTenants     UserTenant[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // ==========================================
+  // --- ÍNDICES ESTRATÉGICOS ---
+  // ==========================================
+
+  // 1. Búsqueda y listado rápido de sucursales activas por Tenant (el filtro más usado)
+  @@index([tenantId, isActive])
+
+  @@map("stores")
+}
+
+model StoreInventory {
+  id        String  @id @default(cuid())
+  storeId   String
+  store     Store   @relation(fields: [storeId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  stock    Int @default(0)
+  minStock Int @default(5)
+
+  // Clave única (genera un índice B-Tree automático para [storeId, productId])
+  @@unique([storeId, productId])
+
+  // ==========================================
+  // --- ÍNDICES ESTRATÉGICOS ADICIONALES ---
+  // ==========================================
+
+  // 1. Consultar en qué sucursales está presente un producto (sin importar el storeId)
+  @@index([productId])
+
+  // 2. Alertas de bajo stock / faltantes por sucursal
+  @@index([storeId, stock])
+
+  @@map("store_inventory")
+}
+
+// ==================== MODELOS EXISTENTES (MODIFICADOS) ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  emailVerified DateTime?
+
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // 🏪 CONEXIÓN NUEVA: La sucursal actual/asignada del usuario (opcional para admins globales)
+  storeId       String?
+  store         Store?    @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  userTenants      UserTenant[]
+  sentInvitations  Invitation[]
+  approvedCredits  CustomerCredit[] @relation("CreditApprovals")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  sales         Sale[]
+  cashSessions  CashSession[]
+  gastos        Gasto[]
+
+  @@map("users")
+}
+
+// Enum para controlar el flujo del envío
+enum ShippingStatus {
+  PENDING
+  PREPARING
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+model Sale {
+  id                String        @id @default(cuid())
+  saleNumber        String        @unique
+  total             Decimal
+  status            SaleStatus    @default(COMPLETED)
+  paymentMethod     PaymentMethod
+  transferReference String?
+  transferBank      String?
+  paymentNote       String?
+
+  // Relación con Store
+  storeId String?
+  store   Store?  @relation(fields: [storeId], references: [id])
+
+  // Sesión de caja asociada
+  cashSessionId String?
+  cashSession   CashSession? @relation(fields: [cashSessionId], references: [id])
+
+  // Relaciones
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  items          SaleItem[]
+  refunds        Refund[]
+  pointMovements PointMovement[]
+
+  // --- MÓDULO DE LOGÍSTICA Y ENVÍOS ---
+  requiresShipping Boolean        @default(false)
+  shippingAddress  String?
+  shippingCost     Decimal        @default(0)
+  shippingStatus   ShippingStatus @default(PENDING) // PENDING, PARTIAL, DELIVERED, CANCELLED
+  shippingNotes    String?
+
+  // Campos recuperados de despachos/control de carga
+  isLoadVerified Boolean   @default(false)
+  dispatchedAt   DateTime?
+  driverName     String?
+  vehiclePlate   String?
+
+  // 🚚 Relación con Remitos/Despachos (1 Venta -> N Despachos/Remitos)
+  shipments Shipment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Campos para crédito
+  isCredit        Boolean          @default(false)
+  creditId        String?
+  credit          CustomerCredit?  @relation(fields: [creditId], references: [id])
+  creditStatus    CreditSaleStatus @default(PENDING)
+  dueDate         DateTime?
+  creditMovements CreditMovement[]
+
+  // Campos para AFIP Electrónica
+  esFacturaLegal Boolean   @default(false)
+  tipoFactura    String?
+  ptoVta         Int?
+  nroComprobante Int?
+  cae            String?   @unique
+  caeVencimiento DateTime?
+  qrAfipData     String?
+  cuitCliente    String?
+
+  // Flags de control para alertas
+  alertTodaySeen    Boolean @default(false)
+  alertOverdueSeen Boolean @default(false)
+
+  // ==========================================
+  // --- ÍNDICES ESTRATÉGICOS PARA OPTIMIZAR CPU ---
+  // ==========================================
+
+  // 1. Reportes y listado de ventas por tenant y fecha
+  @@index([tenantId, createdAt])
+
+  // 2. Arqueos y cierres de caja acelerados
+  @@index([cashSessionId])
+
+  // 3. Panel de alertas de ventas a crédito impagas / por vencer
+  @@index([tenantId, isCredit, creditStatus, dueDate])
+
+  // 4. Historial de compras por cliente
+  @@index([customerId])
+
+  // 5. Búsquedas rápidas de facturas electrónicas de AFIP
+  @@index([tenantId, esFacturaLegal, ptoVta, nroComprobante])
+
+  // 6. Filtros por sucursal y fecha
+  @@index([storeId, createdAt])
+
+  // 7. Filtro rápido para tablero/despacho de envíos pendientes
+  @@index([tenantId, requiresShipping, shippingStatus])
+  @@map("sales")
+}
+
+enum CreditSaleStatus {
+  PENDING // Pendiente de pago
+  PARTIAL // Pago parcial
+  PAID // Pagado completamente
+  OVERDUE // Vencido
+  CANCELLED // Cancelado
+}
+
+// ==================== MODELOS EXISTENTES (SIN CAMBIOS) ====================
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  tenantId           String             @unique
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  plan               PlanType
+  status             SubscriptionStatus @default(ACTIVE)
+  mpSubscriptionId   String?
+  mpPreferenceId     String?
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  price              Float
+  
+  // 🟢 NUEVO CAMPO: Guardará las sucursales adeudadas/pagadas On-Demand
+  extraStoresCount   Int                @default(0)
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  price             Decimal // Si saleType es "unit" es por unidad. Si es "weight", es precio por Kg.
+  cost              Decimal?
+  quantity          Decimal // MODIFICADO: Permite stock fraccionable (Ej: 20.000 kg)
+  barCode           String?
+  sku               String?
+  category          String
+  moduleId          String?
+  image             String?
+  weight            Decimal? // Peso estático (opcional, para envíos)
+  dimensions        String?
+  isActive          Boolean  @default(true)
+  lowStockThreshold Decimal  @default(5) // MODIFICADO: Alertas fraccionables (Ej: 1.5 kg)
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  module            Module?  @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+
+  // PRODUCTOS POR PESO (BALANZAS)
+  saleType String @default("unit") // "unit" o "weight"
+  plu      Int? // Código numérico para la balanza (Ej: 102)
+
+  // Store por defecto para el producto
+  storeId String?
+  store   Store?  @relation(fields: [storeId], references: [id])
+
+  // 🆕 Campo opcional para marcar productos manuales/genéricos
+  isManual Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 🛒 CAMPOS E-COMMERCE
+  publicadoWeb Boolean  @default(false)
+  images       String[] // Fotos extra desde Supabase Storage
+
+  saleItems      SaleItem[]
+  refundItems    RefundItem[]
+  storeInventory StoreInventory[]
+  supplierId     String?
+  supplier       Supplier?        @relation(fields: [supplierId], references: [id])
+  stockMovements StockMovement[]
+  onlineOrderItems OnlineOrderItem[]
+
+  // ÍNDICES COMPUESTOS
+  @@unique([barCode, storeId])
+  @@unique([sku, storeId])
+  @@unique([plu, storeId])
+  @@index([storeId, plu]) // Optimiza la búsqueda cuando el POS escanee el ticket
+  @@map("products")
+}
+
+model Module {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  isActive    Boolean @default(true)
+  tenantId    String
+
+  //  NUEVO: Sucursal del módulo
+  storeId String?
+  store   Store?  @relation(fields: [storeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, name])
+  @@map("modules")
+}
+
+model Refund {
+  id           String   @id @default(cuid())
+  refundNumber String   @unique
+  total        Float
+  status       String   @default("COMPLETED")
+  createdAt    DateTime @default(now())
+
+  saleId   String
+  sale     Sale         @relation(fields: [saleId], references: [id])
+  tenantId String
+  tenant   Tenant       @relation(fields: [tenantId], references: [id])
+  items    RefundItem[]
+
+  @@map("refunds")
+}
+
+model RefundItem {
+  id        String  @id @default(cuid())
+  quantity  Int
+  unitPrice Decimal
+  subtotal  Decimal
+
+  refundId  String
+  refund    Refund  @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("refund_items")
+}
+
+model SaleItem {
+  id        String   @id @default(cuid())
+  saleId    String
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Nombre del producto al momento de la venta
+  productName String?  
+  
+  quantity  Float
+  saleType  String?
+  unitPrice Decimal
+  subtotal  Decimal
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ==========================================
+  // --- ÍNDICES ESTRATÉGICOS ---
+  // ==========================================
+
+  // 1. Fundamental para cargar los renglones de una Venta (sale.include.items)
+  @@index([saleId])
+
+  // 2. Reportes de productos más vendidos e historial de ventas por producto
+  @@index([productId])
+
+  @@map("sale_items")
+}
+
+
+model Customer {
+  id           String          @id @default(cuid())
+  name         String
+  email        String?         @unique
+  phone        String?
+  taxCondition String          @default("CONSUMIDOR_FINAL")
+  cuit         String?
+  points       Int             @default(0)
+  movements    PointMovement[] // <-- Relación para el historial de puntos
+  address      String?
+  tenantId     String
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  //  NUEVO: Sucursal principal del cliente
+  storeId String?
+  store   Store?  @relation(fields: [storeId], references: [id])
+
+  sales     Sale[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // NUEVO: Relación con crédito
+  creditAccount CustomerCredit?
+
+  // Campos adicionales para crédito rápido
+  creditEnabled Boolean @default(false)
+  creditScore   Int? // Puntuación de riesgo (1-100)
+
+  @@map("customers")
+}
+
+model PointMovement {
+  id          String   @id @default(uuid())
+  customerId  String
+  saleId      String? // Opcional por si necesita auditar de qué venta vino
+  sale        Sale?    @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  points      Int // Positivos para compras, negativos para canjes/cancelaciones
+  type        String // "EARNED" o "REDEEMED"
+  description String // Ej: "Puntos acumulados por compra de contado (V-STO-1234)"
+  createdAt   DateTime @default(now())
+
+  // Esta línea establece la relación inversa con tu tabla Customer
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // Opcional: Un índice para que las búsquedas de historial de puntos sean un misil
+  @@index([customerId])
+}
+
+model Invitation {
+  id        String    @id @default(cuid())
+  email     String
+  token     String    @unique
+  role      UserRole  @default(USER)
+  tenantId  String
+  inviterId String
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  // 🏪 CONEXIÓN NUEVA: Al invitar, guardamos opcionalmente a qué sucursal va
+  storeId   String?
+  store     Store?    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inviter   User      @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("invitations")
+}
+
+// ==================== ENUMS EXISTENTES ====================
+
+enum PlanType {
+  TRIAL
+  BASIC
+  COMMERCE     // 🟢 NUEVO (Plan Comercio - $65k)
+  CHAIN        // 🟢 NUEVO (Plan Cadena - $120k)
+  PROFESSIONAL // ⚠️ Mantenido para retrocompatibilidad con datos legacy
+  ENTERPRISE   // Plan Corporativo / Franquicias ($220k)
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  PENDING
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+  CREDIT
+}
+
+// ==================== MODELOS CUENTA CORRIENTE ====================
+
+model CustomerCredit {
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  creditLimit      Decimal @default(0)
+  currentBalance   Decimal @default(0)
+  availableBalance Decimal @default(0)
+
+  status    CreditStatus @default(ACTIVE)
+  daysToPay Int          @default(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // CORREGIDO: Relación formal con el modelo de Usuarios
+  approvedBy   String?
+  approverUser User?            @relation("CreditApprovals", fields: [approvedBy], references: [id], onDelete: SetNull)
+  movements    CreditMovement[]
+  creditSales  Sale[]
+  payments     CreditPayment[]
+
+  @@unique([customerId, tenantId])
+  @@map("customer_credits")
+}
+
+model LoyaltyReward {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String // Ej: "Envío Gratis Centro" o "10% de Descuento"
+  pointsCost  Int // Cuántos puntos cuesta canjearlo
+  type        String // "DISCOUNT_PERCENT", "DISCOUNT_FIXED", "FREE_SHIPPING", "PRODUCT"
+  value       Float? // El valor del descuento si aplica (ej: 10 para el 10%)
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model CreditMovement {
+  id       String         @id @default(cuid())
+  creditId String
+  credit   CustomerCredit @relation(fields: [creditId], references: [id], onDelete: Cascade)
+
+  saleId String?
+  sale   Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
+  type        CreditMovementType
+  amount      Decimal // Siempre positivo. El tipo define si suma o resta al balance
+  description String?
+
+  // Foto del saldo para auditoría estricta
+  previousBalance Decimal
+  newBalance      Decimal
+
+  dueDate DateTime? // Copia del vencimiento de la venta para reportes rápidos
+  paidAt  DateTime? // Cuándo se terminó de saldar este movimiento específico
+
+  createdAt DateTime @default(now())
+  createdBy String // UserId del cajero/operador
+
+  // Relaciones para el tracking de pagos
+  payment CreditPayment? // Si el movimiento es tipo PAYMENT, tiene este detalle
+
+  // NUEVO: Para saber qué facturas afectó este pago, o qué pagos afectaron a esta factura
+  imputationsAsInvoice CreditPaymentImputation[] @relation("InvoiceMovement")
+  imputationsAsPayment CreditPaymentImputation[] @relation("PaymentMovement")
+
+  @@map("credit_movements")
+}
+
+model CreditPayment {
+  id String @id @default(cuid())
+
+  // El movimiento de tipo PAYMENT asociado
+  movementId String         @unique
+  movement   CreditMovement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+
+  // CORREGIDO: El pago SIEMPRE pertenece a una cuenta corriente
+  customerCreditId String
+  credit           CustomerCredit @relation(fields: [customerCreditId], references: [id], onDelete: Cascade)
+
+  // CORREGIDO: Saber dónde se cobró y en qué caja
+  storeId       String
+  store         Store       @relation(fields: [storeId], references: [id])
+  cashSessionId String
+  cashSession   CashSession @relation(fields: [cashSessionId], references: [id])
+
+  amount          Decimal
+  paymentMethod   PaymentMethod // CASH, CARD, TRANSFER, etc.
+  referenceNumber String? // Para cuando pagan el crédito con transferencia
+
+  createdAt DateTime @default(now())
+
+  @@map("credit_payments")
+}
+
+//  NUEVO: La clave para los pagos parciales y resúmenes de cuenta claros
+model CreditPaymentImputation {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // El movimiento del PAGO (Type: PAYMENT)
+  paymentMovementId String
+  paymentMovement   CreditMovement @relation("PaymentMovement", fields: [paymentMovementId], references: [id], onDelete: Cascade)
+
+  // El movimiento de la VENTA que se está pagando (Type: SALE)
+  invoiceMovementId String
+  invoiceMovement   CreditMovement @relation("InvoiceMovement", fields: [invoiceMovementId], references: [id], onDelete: Cascade)
+
+  amount    Decimal // Cuánta plata de ese pago se le asignó a esta factura específica
+  createdAt DateTime @default(now())
+
+  @@map("credit_payment_imputations")
+}
+
+// ==================== ENUMS NUEVOS ====================
+
+enum CreditStatus {
+  ACTIVE
+  SUSPENDED
+  BLOCKED
+  PENDING_APPROVAL
+  CANCELLED
+}
+
+enum CreditMovementType {
+  SALE // Venta a crédito
+  PAYMENT // Pago del cliente
+  ADJUSTMENT // Ajuste manual
+  INTEREST // Interés por mora
+  REFUND // Devolución
+}
+
+enum TipoGasto {
+  OPERATIVO
+  ADMINISTRATIVO
+  VENTAS
+  MARKETING
+  INSUMOS
+  SALARIOS
+  ALQUILER
+  SERVICIOS
+  IMPUESTOS
+  OTROS
+}
+
+enum EstadoGasto {
+  PENDIENTE
+  PAGADO
+  CANCELADO
+}
+
+model Gasto {
+  id          String      @id @default(cuid())
+  descripcion String
+  monto       Float
+  tipo        TipoGasto
+  estado      EstadoGasto @default(PENDIENTE)
+  fecha       DateTime    @default(now())
+  fechaPago   DateTime?
+
+  // Relación con quien registró el gasto
+  usuarioId String?
+  usuario   User?   @relation(fields: [usuarioId], references: [id])
+
+  // Relación con el tenant/empresa
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  // Para gastos recurrentes
+  esRecurrente Boolean @default(false)
+  frecuencia   String? // "mensual", "semanal", "anual"
+
+  // Comprobante
+  comprobanteUrl String?
+  observaciones  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fecha])
+  @@index([tipo])
+  @@index([estado])
+}
+
+// ==========================================
+// --- NUEVO MODELO DE REMITOS / SHIPMENTS ---
+// ==========================================
+model Shipment {
+  id        String @id @default(cuid())
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  saleId    String
+  sale      Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  // 🔢 Número secuencial correlativo del remito único por tenant (1, 2, 3...)
+  remitoNumber Int
+
+  // Datos específicos de este viaje/despacho
+  driverName     String?
+  vehiclePlate   String?
+  isLoadVerified Boolean @default(false)
+  notes          String?
+
+  // Fecha y hora EXACTA de la emisión/despacho de este remito
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Unicidad del número de remito dentro de cada empresa/tenant
+  @@unique([tenantId, remitoNumber])
+  
+  // Índices para consultas rápidas
+  @@index([tenantId, createdAt])
+  @@index([saleId])
+  @@map("shipments")
+}
+
+enum OnlineOrderStatus {
+  PENDING      // Llegó el pedido de la web
+  PREPARING    // El comercio lo está preparando
+  READY        // Listo para retirar o enviar
+  COMPLETED    // Finalizado / Convertido a Venta
+  CANCELLED
+}
+
+enum OnlineDeliveryType {
+  PICKUP       // Retiro en local
+  DELIVERY     // Envío a domicilio
+}
+
+model OnlineOrder {
+  id        String   @id @default(cuid())
+  orderNumber String // Ej: #WEB-1001
+
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Datos del comprador
+  customerName  String
+  customerPhone String
+  customerEmail String?
+  
+  deliveryType  OnlineDeliveryType @default(PICKUP)
+  address       String?
+  notes         String?
+
+  total         Decimal
+  status        OnlineOrderStatus  @default(PENDING)
+
+  items         OnlineOrderItem[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@map("online_orders")
+}
+
+model OnlineOrderItem {
+  id            String      @id @default(cuid())
+  onlineOrderId String
+  onlineOrder   OnlineOrder @relation(fields: [onlineOrderId], references: [id], onDelete: Cascade)
+
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+
+  productName   String      // Copia del nombre al momento de la compra
+  quantity      Float
+  unitPrice     Decimal
+  subtotal      Decimal
+
+  @@map("online_order_items")
+}
