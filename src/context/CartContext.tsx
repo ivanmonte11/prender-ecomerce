@@ -10,6 +10,8 @@ interface TenantCartConfig {
   phone: string | null;
   shippingFee: number;
   freeShippingThreshold: number;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
 }
 
 interface CartContextType {

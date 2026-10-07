@@ -12,6 +12,8 @@ export interface StoreTenant {
   freeShippingThreshold: number | null;
   status: string;
   eCommerceEnabled: boolean;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
 }
 
 export interface StoreProduct {
@@ -59,6 +61,9 @@ export interface CheckoutPayload extends CheckoutCustomerData {
     unitPrice: number;
     subtotal: number;
   }[];
+  subtotal?: number;
+  shippingFee?: number;
+  total?: number;
 }
 
 export interface OnlineOrderDetail {

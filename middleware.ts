@@ -26,14 +26,19 @@ export function middleware(req: NextRequest) {
         tenantSlug = hostWithoutPort.replace(`.${rootWithoutPort}`, '');
     }
 
-    // Si detecta un subdominio válido (ej: "urbe")
-    if (tenantSlug && tenantSlug !== 'www' && tenantSlug !== rootWithoutPort) {
-        // Reescritura interna a /store/[slug]
-        url.pathname = `/store/${tenantSlug}${url.pathname}`;
-        return NextResponse.rewrite(url);
+    // Si el subdominio es 'shoppers', 'www' o está vacío, muestra la Landing / Marketplace principal
+    if (
+        !tenantSlug ||
+        tenantSlug === 'www' ||
+        tenantSlug === 'shoppers' ||
+        tenantSlug === rootWithoutPort
+    ) {
+        return NextResponse.next();
     }
 
-    return NextResponse.next();
+    // Si detecta un subdominio válido de comercio (ej: "urbe") -> reescritura interna a /store/[slug]
+    url.pathname = `/store/${tenantSlug}${url.pathname}`;
+    return NextResponse.rewrite(url);
 }
 
 export const config = {

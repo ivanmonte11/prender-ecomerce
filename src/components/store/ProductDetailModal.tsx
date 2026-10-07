@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Plus, Minus, ShoppingBag, Package, Scale, Check } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Package, Scale } from 'lucide-react';
 import { StoreProduct } from '@/types/store';
 import { formatPrice } from '@/lib/whatsapp';
 import { useCart } from '@/context/CartContext';
@@ -30,15 +30,15 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
   const displayedImage = allImages[selectedImageIndex] || allImages[0] || null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 z-10 p-2 bg-white/90 hover:bg-white text-gray-700 hover:text-gray-950 rounded-full shadow-md transition-all cursor-pointer"
+          className="absolute top-3.5 right-3.5 z-10 p-2 bg-white/90 hover:bg-white text-gray-700 hover:text-gray-950 rounded-full shadow-md transition-all cursor-pointer"
           aria-label="Cerrar modal"
         >
           <X className="w-5 h-5" />
@@ -46,7 +46,7 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
 
         <div className="grid grid-cols-1 md:grid-cols-2 max-h-[85vh] overflow-y-auto">
           {/* Gallery / Image Section */}
-          <div className="bg-gray-50 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100">
+          <div className="bg-gray-50/80 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100">
             <div className="relative w-full aspect-square max-h-72 rounded-2xl overflow-hidden bg-white flex items-center justify-center border border-gray-100 shadow-inner">
               {displayedImage ? (
                 <img
@@ -57,7 +57,7 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
               ) : (
                 <div className="text-gray-300 flex flex-col items-center gap-2">
                   <Package className="w-16 h-16 stroke-1" />
-                  <span className="text-xs text-gray-400">Sin foto disponible</span>
+                  <span className="text-xs text-gray-400 font-medium">Sin foto disponible</span>
                 </div>
               )}
             </div>
@@ -69,8 +69,15 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                   <button
                     key={idx}
                     onClick={() => setSelectedImageIndex(idx)}
-                    className={`w-12 h-12 rounded-lg border-2 overflow-hidden bg-white shrink-0 cursor-pointer ${
-                      selectedImageIndex === idx ? 'border-emerald-600 ring-2 ring-emerald-500/20' : 'border-gray-200 opacity-70 hover:opacity-100'
+                    style={
+                      selectedImageIndex === idx
+                        ? {
+                            borderColor: 'var(--brand-primary, #2563eb)',
+                          }
+                        : undefined
+                    }
+                    className={`w-12 h-12 rounded-xl border-2 overflow-hidden bg-white shrink-0 cursor-pointer transition-all ${
+                      selectedImageIndex === idx ? 'ring-2 ring-black/10 scale-105' : 'border-gray-200 opacity-60 hover:opacity-100'
                     }`}
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
@@ -82,29 +89,32 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
 
           {/* Product Details Section */}
           <div className="p-6 sm:p-8 flex flex-col justify-between space-y-6">
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-0.5 text-xs font-semibold bg-gray-100 text-gray-700 rounded-md">
                   {product.category}
                 </span>
                 {isWeight ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium bg-amber-50 text-amber-800 rounded-md border border-amber-200/60">
-                    <Scale className="w-3 h-3 text-amber-600" />
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-800 rounded-md border border-amber-200/60">
+                    <Scale className="w-3.5 h-3.5 text-amber-600" />
                     Por Kilogramo
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 text-xs font-medium bg-blue-50 text-blue-800 rounded-md border border-blue-200/60">
+                  <span className="px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-md">
                     Por Unidad
                   </span>
                 )}
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-950 tracking-tight">
+              <h3 className="text-xl sm:text-2xl font-black text-gray-950 tracking-tight leading-tight">
                 {product.name}
               </h3>
 
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-emerald-700">
+                <span 
+                  className="text-2xl sm:text-3xl font-black tracking-tight"
+                  style={{ color: 'var(--brand-primary, #2563eb)' }}
+                >
                   {formatPrice(product.price)}
                 </span>
                 <span className="text-sm font-medium text-gray-500">
@@ -114,7 +124,7 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
 
               {product.description && (
                 <div className="pt-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Descripción</h4>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Descripción</h4>
                   <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
                     {product.description}
                   </p>
@@ -125,28 +135,32 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
             {/* Cart Actions */}
             <div className="pt-4 border-t border-gray-100 space-y-3">
               {currentCartQty > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
                     <span>En tu carrito:</span>
-                    <span className="text-emerald-700 font-bold">
+                    <span 
+                      className="font-bold"
+                      style={{ color: 'var(--brand-primary, #2563eb)' }}
+                    >
                       {currentCartQty} {isWeight ? 'kg' : 'unidades'} ({formatPrice(currentCartQty * product.price)})
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-between border border-gray-200 rounded-xl bg-gray-50 p-1 flex-1">
+                    <div className="flex items-center justify-between border border-gray-200 rounded-2xl bg-gray-50 p-1 flex-1 shadow-inner">
                       <button
                         onClick={() => updateQuantity(product.id, currentCartQty - step)}
-                        className="w-10 h-10 flex items-center justify-center rounded-lg bg-white shadow-xs text-gray-700 hover:text-emerald-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-xs text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
                         aria-label="Restar cantidad"
                       >
                         <Minus className="w-4 h-4" />
                       </button>
-                      <span className="font-bold text-base text-gray-900 px-3">
+                      <span className="font-extrabold text-base text-gray-900 px-3">
                         {currentCartQty} {isWeight ? 'kg' : ''}
                       </span>
                       <button
                         onClick={() => updateQuantity(product.id, currentCartQty + step)}
-                        className="w-10 h-10 flex items-center justify-center rounded-lg bg-white shadow-xs text-gray-700 hover:text-emerald-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                        style={{ backgroundColor: 'var(--brand-primary, #2563eb)' }}
+                        className="w-10 h-10 flex items-center justify-center rounded-xl text-white shadow-xs hover:brightness-110 transition-all cursor-pointer"
                         aria-label="Sumar cantidad"
                       >
                         <Plus className="w-4 h-4" />
@@ -157,7 +171,8 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
               ) : (
                 <button
                   onClick={() => addItem(product, minQty)}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all active:scale-98 cursor-pointer"
+                  style={{ backgroundColor: 'var(--brand-primary, #2563eb)' }}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 px-4 text-white font-bold rounded-2xl shadow-md hover:shadow-lg transition-all active:scale-98 hover:brightness-105 cursor-pointer text-sm"
                 >
                   <ShoppingBag className="w-5 h-5" />
                   <span>Agregar al Carrito ({formatPrice(product.price * minQty)})</span>

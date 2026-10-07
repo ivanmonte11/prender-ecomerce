@@ -30,6 +30,8 @@ export default async function StorePage({ params }: StorePageProps) {
             freeShippingThreshold: true,
             status: true,
             eCommerceEnabled: true,
+            primaryColor: true,
+            secondaryColor: true,
         },
     });
 
@@ -117,6 +119,8 @@ export default async function StorePage({ params }: StorePageProps) {
         freeShippingThreshold: tenant.freeShippingThreshold,
         status: tenant.status,
         eCommerceEnabled: tenant.eCommerceEnabled,
+        primaryColor: tenant.primaryColor,
+        secondaryColor: tenant.secondaryColor,
     };
 
     return <StoreCatalog tenant={storeTenant} products={products} />;

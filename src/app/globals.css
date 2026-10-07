@@ -2,25 +2,67 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+  /* Variables dinámicas de marca con fallbacks */
+  --brand-primary: #2563eb;
+  --brand-secondary: #0f172a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Dynamic Brand Utility Classes */
+.bg-brand-primary {
+  background-color: var(--brand-primary, #2563eb);
+}
+.text-brand-primary {
+  color: var(--brand-primary, #2563eb);
+}
+.border-brand-primary {
+  border-color: var(--brand-primary, #2563eb);
+}
+.bg-brand-secondary {
+  background-color: var(--brand-secondary, #0f172a);
+}
+.text-brand-secondary {
+  color: var(--brand-secondary, #0f172a);
+}
+.border-brand-secondary {
+  border-color: var(--brand-secondary, #0f172a);
+}
+
+/* Subtly Tinted Brand Utilities using color-mix */
+.bg-brand-primary-light {
+  background-color: color-mix(in srgb, var(--brand-primary, #2563eb) 8%, transparent);
+}
+.bg-brand-primary-subtle {
+  background-color: color-mix(in srgb, var(--brand-primary, #2563eb) 14%, transparent);
+}
+.text-brand-primary-dark {
+  color: color-mix(in srgb, var(--brand-primary, #2563eb) 85%, #000000);
+}
+.border-brand-primary-light {
+  border-color: color-mix(in srgb, var(--brand-primary, #2563eb) 22%, transparent);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

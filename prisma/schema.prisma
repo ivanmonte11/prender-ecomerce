@@ -25,6 +25,8 @@ model Tenant {
 
   shippingFee Float?   @default(0)
   freeShippingThreshold Float? @default(0)
+  primaryColor    String?  @default("#2563eb") 
+  secondaryColor  String?  @default("#0f172a") 
 
   // RELACIONES EXISTENTES
   users     User[]

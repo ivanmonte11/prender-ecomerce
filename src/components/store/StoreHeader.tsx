@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Search, X, MessageCircle, Store, MapPin } from 'lucide-react';
+import { ShoppingBag, Search, X, MessageCircle, MapPin } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { StoreTenant } from '@/types/store';
 import { cleanPhoneNumber, formatPrice } from '@/lib/whatsapp';
@@ -18,33 +18,40 @@ export function StoreHeader({ tenant, searchQuery, onSearchChange }: StoreHeader
   const waPhone = cleanPhoneNumber(tenant.phone);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs transition-all">
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-xs transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20 gap-3 sm:gap-6">
+        <div className="flex items-center justify-between h-18 sm:h-22 gap-3 sm:gap-6">
           
           {/* Logo & Store Name */}
           <Link
             href={`/store/${tenant.slug}`}
-            className="flex items-center gap-3 min-w-0 group hover:opacity-90 transition-opacity"
+            className="flex items-center gap-3.5 min-w-0 group hover:opacity-95 transition-opacity"
           >
             {tenant.logoUrl ? (
-              <img
-                src={tenant.logoUrl}
-                alt={tenant.name}
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-contain border border-gray-100 bg-white shadow-xs p-1 group-hover:scale-105 transition-transform"
-              />
+              <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl border border-gray-200/80 bg-white shadow-xs p-1 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:shadow-md transition-all">
+                <img
+                  src={tenant.logoUrl}
+                  alt={tenant.name}
+                  className="w-full h-full object-contain"
+                />
+              </div>
             ) : (
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-linear-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-emerald-700/20 group-hover:scale-105 transition-transform">
+              <div 
+                style={{
+                  background: `linear-gradient(135deg, var(--brand-primary, #2563eb), var(--brand-secondary, #0f172a))`,
+                }}
+                className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl text-white flex items-center justify-center font-black text-base sm:text-xl shadow-xs shrink-0 group-hover:scale-105 group-hover:shadow-md transition-all"
+              >
                 {tenant.name.slice(0, 2).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="font-bold text-gray-900 text-base sm:text-lg truncate tracking-tight">
+              <h1 className="font-extrabold text-gray-900 text-base sm:text-lg lg:text-xl truncate tracking-tight">
                 {tenant.name}
               </h1>
               {tenant.address && (
-                <p className="text-xs text-gray-500 hidden md:flex items-center gap-1 truncate">
-                  <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+                <p className="text-xs text-gray-500 hidden md:flex items-center gap-1.5 truncate mt-0.5">
+                  <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                   <span className="truncate">{tenant.address}</span>
                 </p>
               )}
@@ -59,8 +66,8 @@ export function StoreHeader({ tenant, searchQuery, onSearchChange }: StoreHeader
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Buscar productos por nombre..."
-                className="w-full pl-9 pr-8 py-2 bg-gray-50 hover:bg-gray-100/80 focus:bg-white text-sm text-gray-900 placeholder-gray-400 rounded-full border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-hidden transition-all"
+                placeholder="Buscar productos en la tienda..."
+                className="w-full pl-9 pr-8 py-2.5 bg-gray-50/80 hover:bg-gray-100/70 focus:bg-white text-sm text-gray-900 placeholder-gray-400 rounded-full border border-gray-200/80 focus:border-gray-400 outline-hidden transition-all shadow-2xs"
               />
               {searchQuery && (
                 <button
@@ -81,28 +88,31 @@ export function StoreHeader({ tenant, searchQuery, onSearchChange }: StoreHeader
                 href={`https://wa.me/${waPhone}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden lg:flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 rounded-full transition-colors"
+                className="hidden lg:flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/70 rounded-full transition-all hover:brightness-95"
               >
                 <MessageCircle className="w-4 h-4 text-emerald-600 fill-emerald-600" />
                 <span>WhatsApp</span>
               </a>
             )}
 
-            {/* Cart Button */}
+            {/* Cart Button with Prender Indigo/Violet Badge */}
             <button
               onClick={openCart}
-              className="relative flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-full shadow-sm hover:shadow-md transition-all active:scale-95 cursor-pointer"
+              style={{
+                backgroundColor: 'var(--brand-primary, #2563eb)',
+              }}
+              className="relative flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-2.5 text-white font-medium rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 hover:brightness-105 cursor-pointer"
               aria-label="Ver carrito"
             >
-              <div className="relative">
+              <div className="relative flex items-center justify-center">
                 <ShoppingBag className="w-5 h-5 text-white" />
                 {totalItemsCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-amber-400 text-gray-950 text-[11px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center shadow-xs animate-in zoom-in-50">
+                  <span className="absolute -top-2.5 -right-2.5 bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 text-white text-[10px] sm:text-[11px] font-bold min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center shadow-md shadow-indigo-500/25 ring-1 ring-white/20 animate-in zoom-in-50">
                     {totalItemsCount > 99 ? '99+' : totalItemsCount}
                   </span>
                 )}
               </div>
-              <span className="hidden sm:inline text-xs font-semibold">
+              <span className="hidden sm:inline text-xs font-bold">
                 {subtotal > 0 ? formatPrice(subtotal) : 'Mi Carrito'}
               </span>
             </button>
@@ -112,13 +122,13 @@ export function StoreHeader({ tenant, searchQuery, onSearchChange }: StoreHeader
         {/* Mobile Search Bar */}
         <div className="sm:hidden pb-3">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar en el catálogo..."
-              className="w-full pl-9 pr-8 py-2 bg-gray-50 text-sm text-gray-900 placeholder-gray-400 rounded-full border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-hidden"
+              className="w-full pl-9 pr-8 py-2 bg-gray-50 text-sm text-gray-900 placeholder-gray-400 rounded-full border border-gray-200 focus:border-gray-400 outline-hidden shadow-2xs"
             />
             {searchQuery && (
               <button
