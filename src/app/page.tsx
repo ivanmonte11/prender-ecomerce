@@ -54,7 +54,7 @@ export default async function HomePage() {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'prender.store';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-cyan-500 selection:text-slate-950 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-violet-600 selection:text-white flex flex-col">
       <LandingHeader />
       <main className="flex-1">
         <LandingHero totalStores={tenants.length} />

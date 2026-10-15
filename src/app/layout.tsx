@@ -110,7 +110,7 @@ export const metadata: Metadata = {
 
   other: {
     "application-name": "PrenderStores",
-    "theme-color": "#0f172a",
+    "theme-color": "#ffffff",
   },
 };
 
@@ -125,7 +125,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body
-        className={`${geistSans.className} min-h-full flex flex-col bg-slate-950 text-slate-100`}
+        className={`${geistSans.className} min-h-full flex flex-col bg-slate-50 text-slate-900`}
         suppressHydrationWarning
       >
         {children}
