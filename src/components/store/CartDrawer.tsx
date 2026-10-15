@@ -96,22 +96,37 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
       };
 
       // 1. Send Order to Backend API
-      const res = await fetch('/api/store/checkout', {
+      const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Server Error:', errText);
+        let errorMsg = 'Error al procesar el pedido. Intenta nuevamente.';
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed && typeof parsed === 'object' && parsed.error) {
+            errorMsg = parsed.error;
+          }
+        } catch {
+          // errText no es un JSON válido (ej. 404/500 HTML)
+        }
+        throw new Error(errorMsg);
+      }
+
       const data = await res.json();
 
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.error || 'Error al procesar el pedido. Intentá nuevamente.');
       }
 
       const orderNumber = data.orderNumber || 'WEB-PEDIDO';
 
-      // 2. Generate WhatsApp URL
-      const whatsappUrl = generateWhatsAppOrderUrl({
+      // 2. Generate WhatsApp URL (aprovecha la generada por el backend si existe, o fallback local)
+      const whatsappUrl = data.whatsappUrl || generateWhatsAppOrderUrl({
         orderNumber,
         storeName: tenant.name,
         storePhone: tenant.phone,
