@@ -35,6 +35,14 @@ export const metadata: Metadata = {
         alt: 'Prender Shoppers - Plataforma Marketplace de Tiendas Locales',
         type: 'image/png',
       },
+      {
+        url: `${BASE_URL}/og-logo.png`,
+        secureUrl: `${BASE_URL}/og-logo.png`,
+        width: 600,
+        height: 600,
+        alt: 'Logo Oficial Prender Shoppers',
+        type: 'image/png',
+      },
     ],
   },
   twitter: {

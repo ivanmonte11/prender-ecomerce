@@ -120,13 +120,13 @@ export const metadata: Metadata = {
 
   appleWebApp: {
     title: "Prender Shoppers",
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     startupImage: "/apple-touch-icon.png",
   },
 
   other: {
     "application-name": "PrenderShoppers",
-    "theme-color": "#0f172a",
+    "theme-color": "#ffffff",
   },
 };
 

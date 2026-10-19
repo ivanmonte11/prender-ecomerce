@@ -2,75 +2,55 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-async function generateOgImage() {
-  const width = 1200;
-  const height = 630;
-
-  // Cargar el logo de shoppers si existe
+async function generateOgImages() {
   const logoPath = path.join(__dirname, '../public/shoppers-l.png');
   let logoBuffer = null;
   if (fs.existsSync(logoPath)) {
-    // Redimensionar logo a un tamaño óptimo para el banner
     logoBuffer = await sharp(logoPath)
       .resize(220, 220, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .toBuffer();
   }
 
-  // Convertir el logo a base64 para incrustarlo de forma segura en SVG
   const logoBase64 = logoBuffer ? `data:image/png;base64,${logoBuffer.toString('base64')}` : '';
 
-  // SVG con diseño premium y profesional
-  const svg = `
-<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <!-- Gradientes de fondo -->
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#090d16" />
-      <stop offset="50%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#0a0f1d" />
-    </linearGradient>
+  // ==========================================
+  // 1. BANNER HORIZONTAL: og-storefront.png (1200x630)
+  // ==========================================
+  const bannerWidth = 1200;
+  const bannerHeight = 630;
 
-    <!-- Gradientes de marca Prender -->
+  const bannerSvg = `
+<svg width="${bannerWidth}" height="${bannerHeight}" viewBox="0 0 ${bannerWidth} ${bannerHeight}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
     <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#8b5cf6" />
-      <stop offset="50%" stop-color="#6366f1" />
+      <stop offset="0%" stop-color="#7c3aed" />
+      <stop offset="50%" stop-color="#4f46e5" />
       <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
 
-    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.25" />
-      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.25" />
-    </linearGradient>
-
-    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.75" />
-      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.85" />
-    </linearGradient>
-
-    <!-- Luces ambientales (Radial) -->
-    <radialGradient id="glowPurple" cx="15%" cy="20%" r="45%">
-      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.35" />
-      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0" />
+    <radialGradient id="heroPurpleGlow" cx="25%" cy="10%" r="55%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.14" />
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0" />
     </radialGradient>
 
-    <radialGradient id="glowCyan" cx="85%" cy="30%" r="45%">
-      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.28" />
+    <radialGradient id="heroCyanGlow" cx="80%" cy="20%" r="50%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.12" />
       <stop offset="100%" stop-color="#06b6d4" stop-opacity="0" />
     </radialGradient>
 
-    <radialGradient id="glowBottom" cx="50%" cy="100%" r="60%">
-      <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.25" />
-      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0" />
+    <radialGradient id="heroIndigoGlow" cx="50%" cy="100%" r="60%">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.10" />
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
     </radialGradient>
 
-    <!-- Filtro de sombra suave -->
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.5" />
+    <filter id="softShadow" x="-10%" y="-10%" width="125%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.06" />
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.04" />
     </filter>
 
-    <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="8" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter id="heroCircleShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#6366f1" flood-opacity="0.12" />
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.05" />
     </filter>
   </defs>
 
@@ -79,16 +59,16 @@ async function generateOgImage() {
     .text-font { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
   </style>
 
-  <!-- Fondo base -->
-  <rect width="${width}" height="${height}" fill="url(#bgGrad)" />
+  <!-- Fondo Base Claro (Slate-50 de la Landing) -->
+  <rect width="${bannerWidth}" height="${bannerHeight}" fill="#f8fafc" />
 
-  <!-- Luces ambientales -->
-  <rect width="${width}" height="${height}" fill="url(#glowPurple)" />
-  <rect width="${width}" height="${height}" fill="url(#glowCyan)" />
-  <rect width="${width}" height="${height}" fill="url(#glowBottom)" />
+  <!-- Luces Ambientales Sutiles de la Landing -->
+  <rect width="${bannerWidth}" height="${bannerHeight}" fill="url(#heroPurpleGlow)" />
+  <rect width="${bannerWidth}" height="${bannerHeight}" fill="url(#heroCyanGlow)" />
+  <rect width="${bannerWidth}" height="${bannerHeight}" fill="url(#heroIndigoGlow)" />
 
-  <!-- Sutil Grid de fondo -->
-  <g opacity="0.07" stroke="#94a3b8" stroke-width="1">
+  <!-- Sutil Grid Decorativo -->
+  <g opacity="0.35" stroke="#cbd5e1" stroke-width="1">
     <line x1="0" y1="105" x2="1200" y2="105" />
     <line x1="0" y1="210" x2="1200" y2="210" />
     <line x1="0" y1="315" x2="1200" y2="315" />
@@ -104,117 +84,102 @@ async function generateOgImage() {
     <line x1="1050" y1="0" x2="1050" y2="630" />
   </g>
 
-  <!-- Contenedor / Marco de Borde elegante -->
-  <rect x="24" y="24" width="1152" height="582" rx="28" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
+  <!-- Marco Exterior con Borde Suave -->
+  <rect x="24" y="24" width="1152" height="582" rx="28" fill="none" stroke="#e2e8f0" stroke-width="1.5" />
 
-  <!-- ================= LADO IZQUIERDO: CONTENIDO PRINCIPAL ================= -->
-
-  <!-- Badge Superior: Marketplace Oficial -->
-  <g transform="translate(80, 75)">
-    <rect width="410" height="38" rx="19" fill="url(#badgeGrad)" stroke="rgba(139, 92, 246, 0.45)" stroke-width="1.2" />
-    <!-- Punto pulsante -->
-    <circle cx="22" cy="19" r="5" fill="#38bdf8" />
-    <circle cx="22" cy="19" r="8" fill="#38bdf8" opacity="0.35" />
-    <text x="38" y="24" class="text-font" font-size="13" font-weight="700" fill="#c084fc" letter-spacing="1.5">
-      PLATAFORMA MARKETPLACE OFICIAL
+  <!-- Micro-badge de Confianza -->
+  <g transform="translate(80, 72)">
+    <rect width="425" height="38" rx="19" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2" filter="url(#softShadow)" />
+    <circle cx="22" cy="19" r="7" fill="#8b5cf6" opacity="0.25" />
+    <circle cx="22" cy="19" r="4.5" fill="#7c3aed" />
+    <path d="M 36 14 L 42 12 L 48 14 C 48 19 45 23 42 25 C 39 23 36 19 36 14 Z" fill="none" stroke="#7c3aed" stroke-width="1.8" />
+    <path d="M 40 18 L 41.5 20 L 44.5 16" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="56" y="24" class="text-font" font-size="12.5" font-weight="700" fill="#6d28d9" letter-spacing="0.5">
+      MARKETPLACE OFICIAL DE COMERCIOS LOCALES
     </text>
   </g>
 
-  <!-- Título de Marca: Prender Shoppers -->
+  <!-- Logotipo y Nombre: Prender Shoppers -->
   <g transform="translate(80, 185)">
     <text class="title-font" font-size="62" letter-spacing="-1.5">
-      <tspan fill="#ffffff">Prender</tspan><tspan fill="url(#primaryGrad)">Shoppers</tspan>
+      <tspan fill="#0f172a">Prender</tspan><tspan fill="url(#primaryGrad)">Shoppers</tspan>
     </text>
   </g>
 
-  <!-- Subtítulo Destacado: El Marketplace de tus Comercios Locales -->
+  <!-- Titular Principal -->
   <g transform="translate(80, 242)">
-    <text class="title-font" font-size="32" fill="#f8fafc" letter-spacing="-0.5">
+    <text class="title-font" font-size="32" fill="#0f172a" letter-spacing="-0.5">
       El Marketplace de Comercios y Tiendas Locales
     </text>
   </g>
 
   <!-- Bajada descriptiva clara -->
   <g transform="translate(80, 288)">
-    <text class="text-font" font-size="20" fill="#94a3b8" font-weight="400">
-      Explorá catálogos oficiales, descubrí productos de tu zona
+    <text class="text-font" font-size="19" fill="#475569" font-weight="500">
+      Explorá catálogos oficiales con fotos, precios y stock en tiempo real.
     </text>
-    <text x="0" y="30" class="text-font" font-size="20" fill="#94a3b8" font-weight="400">
-      y comprá directo por <tspan fill="#4ade80" font-weight="700">WhatsApp</tspan> con stock verificado en tiempo real.
+    <text x="0" y="28" class="text-font" font-size="19" fill="#475569" font-weight="500">
+      Hacé tus pedidos online y coordiná directo por <tspan fill="#16a34a" font-weight="800">WhatsApp</tspan>, sin intermediarios.
     </text>
   </g>
 
-  <!-- ================= TRES PILARES / CARDS INFERIORES ================= -->
+  <!-- Tres Cards Inferiores -->
   <g transform="translate(80, 395)">
-    <!-- Pill 1: Stock en vivo -->
     <g transform="translate(0, 0)">
-      <rect width="240" height="66" rx="16" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
-      <rect x="14" y="15" width="36" height="36" rx="10" fill="#7c3aed" fill-opacity="0.25" />
-      <text x="32" y="39" class="text-font" font-size="20" text-anchor="middle">📦</text>
-      <text x="60" y="31" class="text-font" font-size="13" font-weight="700" fill="#ffffff">Stock en Vivo</text>
-      <text x="60" y="49" class="text-font" font-size="11" font-weight="500" fill="#94a3b8">Sync Prender ERP</text>
+      <rect width="235" height="70" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.2" filter="url(#softShadow)" />
+      <rect x="14" y="15" width="40" height="40" rx="12" fill="#f5f3ff" />
+      <text x="34" y="42" class="text-font" font-size="20" text-anchor="middle">⚡</text>
+      <text x="64" y="32" class="text-font" font-size="13.5" font-weight="800" fill="#0f172a">0% Comisiones</text>
+      <text x="64" y="50" class="text-font" font-size="11" font-weight="600" fill="#64748b">Precio Directo de Local</text>
     </g>
 
-    <!-- Pill 2: Pedidos por WhatsApp -->
-    <g transform="translate(256, 0)">
-      <rect width="250" height="66" rx="16" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
-      <rect x="14" y="15" width="36" height="36" rx="10" fill="#10b981" fill-opacity="0.25" />
-      <text x="32" y="39" class="text-font" font-size="20" text-anchor="middle">💬</text>
-      <text x="60" y="31" class="text-font" font-size="13" font-weight="700" fill="#ffffff">Pedidos por WhatsApp</text>
-      <text x="60" y="49" class="text-font" font-size="11" font-weight="500" fill="#94a3b8">Atención directa</text>
+    <g transform="translate(252, 0)">
+      <rect width="250" height="70" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.2" filter="url(#softShadow)" />
+      <rect x="14" y="15" width="40" height="40" rx="12" fill="#ecfdf5" />
+      <text x="34" y="42" class="text-font" font-size="20" text-anchor="middle">💬</text>
+      <text x="64" y="32" class="text-font" font-size="13.5" font-weight="800" fill="#0f172a">Por WhatsApp</text>
+      <text x="64" y="50" class="text-font" font-size="11" font-weight="600" fill="#64748b">Atención Directa</text>
     </g>
 
-    <!-- Pill 3: 0% Comisiones -->
-    <g transform="translate(522, 0)">
-      <rect width="230" height="66" rx="16" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
-      <rect x="14" y="15" width="36" height="36" rx="10" fill="#06b6d4" fill-opacity="0.25" />
-      <text x="32" y="39" class="text-font" font-size="20" text-anchor="middle">⚡</text>
-      <text x="60" y="31" class="text-font" font-size="13" font-weight="700" fill="#ffffff">0% Comisiones</text>
-      <text x="60" y="49" class="text-font" font-size="11" font-weight="500" fill="#94a3b8">Precios directos</text>
+    <g transform="translate(518, 0)">
+      <rect width="235" height="70" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.2" filter="url(#softShadow)" />
+      <rect x="14" y="15" width="40" height="40" rx="12" fill="#eff6ff" />
+      <text x="34" y="42" class="text-font" font-size="20" text-anchor="middle">📦</text>
+      <text x="64" y="32" class="text-font" font-size="13.5" font-weight="800" fill="#0f172a">Stock Real</text>
+      <text x="64" y="50" class="text-font" font-size="11" font-weight="600" fill="#64748b">Sync Prender ERP</text>
     </g>
   </g>
 
-  <!-- ================= BARRA INFERIOR / BRANDING DOMINIO ================= -->
+  <!-- Barra Inferior -->
   <g transform="translate(80, 525)">
-    <line x1="0" y1="0" x2="1040" y2="0" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
-    
+    <line x1="0" y1="0" x2="1040" y2="0" stroke="#e2e8f0" stroke-width="1" />
     <g transform="translate(0, 32)">
-      <!-- URL Dominio Principal -->
-      <circle cx="8" cy="-6" r="4" fill="#06b6d4" />
-      <text x="22" y="0" class="title-font" font-size="18" fill="#38bdf8" letter-spacing="0.5">
+      <circle cx="8" cy="-6" r="4.5" fill="#06b6d4" />
+      <text x="22" y="0" class="title-font" font-size="18" fill="#4f46e5" letter-spacing="0.2">
         shoppers.prender.store
       </text>
     </g>
-
     <g transform="translate(1040, 32)">
-      <text x="0" y="0" class="text-font" font-size="14" font-weight="600" fill="#64748b" text-anchor="end">
-        Directorio &amp; Marketplace Oficial • Prender Ecosystem
+      <text x="0" y="0" class="text-font" font-size="13.5" font-weight="600" fill="#94a3b8" text-anchor="end">
+        Directorio Oficial de Comercios • Prender Ecosystem
       </text>
     </g>
   </g>
 
-  <!-- ================= LADO DERECHO: ILUSTRACIÓN / LOGO 3D ================= -->
+  <!-- Ilustración Lado Derecho -->
   <g transform="translate(860, 115)">
-    <!-- Círculo brillante con halo -->
-    <circle cx="130" cy="130" r="150" fill="url(#primaryGrad)" opacity="0.15" filter="url(#glowEffect)" />
-    <circle cx="130" cy="130" r="120" fill="#0f172a" stroke="rgba(255,255,255,0.12)" stroke-width="2" filter="url(#shadow)" />
-    
+    <circle cx="130" cy="130" r="150" fill="url(#primaryGrad)" opacity="0.10" />
+    <circle cx="130" cy="130" r="124" fill="#ffffff" stroke="#e2e8f0" stroke-width="2" filter="url(#heroCircleShadow)" />
     ${
       logoBase64
         ? `<image href="${logoBase64}" x="25" y="25" width="210" height="210" />`
-        : `
-      <!-- Fallback si no hay logo -->
-      <rect x="60" y="60" width="140" height="140" rx="30" fill="url(#primaryGrad)" />
-      <text x="130" y="145" class="title-font" font-size="50" fill="#ffffff" text-anchor="middle">🛍️</text>
-    `
+        : `<rect x="60" y="60" width="140" height="140" rx="30" fill="url(#primaryGrad)" />`
     }
-    
-    <!-- Mini badge flotante 100% Verificado -->
-    <g transform="translate(35, 235)">
-      <rect width="190" height="42" rx="21" fill="#0b1329" stroke="#38bdf8" stroke-width="1.5" filter="url(#shadow)" />
-      <circle cx="24" cy="21" r="9" fill="#10b981" />
+    <g transform="translate(32, 235)">
+      <rect width="196" height="42" rx="21" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#softShadow)" />
+      <circle cx="24" cy="21" r="10" fill="#10b981" />
       <path d="M 19 21 L 23 25 L 29 17" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-      <text x="42" y="26" class="text-font" font-size="12" font-weight="800" fill="#ffffff" letter-spacing="0.5">
+      <text x="42" y="26" class="text-font" font-size="11.5" font-weight="800" fill="#0f172a" letter-spacing="0.5">
         TIENDAS VERIFICADAS
       </text>
     </g>
@@ -222,35 +187,163 @@ async function generateOgImage() {
 </svg>
 `;
 
-  const outputPath = path.join(__dirname, '../public/og-storefront.png');
+  // ==========================================
+  // 2. LOGO CUADRADO: og-logo.png (600x600)
+  // ==========================================
+  const logoWidth = 600;
+  const logoHeight = 600;
+
+  const squareLogoSvg = `
+<svg width="${logoWidth}" height="${logoHeight}" viewBox="0 0 ${logoWidth} ${logoHeight}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sqPrimaryGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c3aed" />
+      <stop offset="50%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <radialGradient id="sqPurpleGlow" cx="30%" cy="20%" r="55%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.16" />
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="sqCyanGlow" cx="75%" cy="35%" r="50%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.14" />
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0" />
+    </radialGradient>
+
+    <filter id="sqSoftShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.08" />
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.04" />
+    </filter>
+
+    <filter id="sqCenterCircleShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#6366f1" flood-opacity="0.14" />
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.05" />
+    </filter>
+  </defs>
+
+  <style>
+    .title-font { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight: 900; }
+    .text-font { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+  </style>
+
+  <!-- Fondo Base Claro -->
+  <rect width="${logoWidth}" height="${logoHeight}" fill="#f8fafc" />
+
+  <!-- Luces Ambientales de Marca -->
+  <rect width="${logoWidth}" height="${logoHeight}" fill="url(#sqPurpleGlow)" />
+  <rect width="${logoWidth}" height="${logoHeight}" fill="url(#sqCyanGlow)" />
+
+  <!-- Grid Sutil -->
+  <g opacity="0.30" stroke="#cbd5e1" stroke-width="1">
+    <line x1="0" y1="120" x2="600" y2="120" />
+    <line x1="0" y1="240" x2="600" y2="240" />
+    <line x1="0" y1="360" x2="600" y2="360" />
+    <line x1="0" y1="480" x2="600" y2="480" />
+
+    <line x1="120" y1="0" x2="120" y2="600" />
+    <line x1="240" y1="0" x2="240" y2="600" />
+    <line x1="360" y1="0" x2="360" y2="600" />
+    <line x1="480" y1="0" x2="480" y2="600" />
+  </g>
+
+  <!-- Marco Exterior -->
+  <rect x="20" y="20" width="560" height="560" rx="32" fill="none" stroke="#e2e8f0" stroke-width="1.5" />
+
+  <!-- Micro-badge Superior -->
+  <g transform="translate(170, 48)">
+    <rect width="260" height="34" rx="17" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2" filter="url(#sqSoftShadow)" />
+    <circle cx="20" cy="17" r="6" fill="#8b5cf6" opacity="0.25" />
+    <circle cx="20" cy="17" r="4" fill="#7c3aed" />
+    <text x="36" y="22" class="text-font" font-size="11.5" font-weight="800" fill="#6d28d9" letter-spacing="0.8">
+      MARKETPLACE OFICIAL
+    </text>
+  </g>
+
+  <!-- Círculo Central con Bolsa 3D Oficial -->
+  <g transform="translate(300, 235)">
+    <!-- Halo exterior -->
+    <circle cx="0" cy="0" r="140" fill="url(#sqPrimaryGrad)" opacity="0.10" />
+    
+    <!-- Círculo blanco elevado -->
+    <circle cx="0" cy="0" r="118" fill="#ffffff" stroke="#e2e8f0" stroke-width="2" filter="url(#sqCenterCircleShadow)" />
+
+    ${
+      logoBase64
+        ? `<image href="${logoBase64}" x="-95" y="-95" width="190" height="190" />`
+        : `<rect x="-50" y="-50" width="100" height="100" rx="20" fill="url(#sqPrimaryGrad)" />`
+    }
+
+    <!-- Badge flotante: Tiendas Verificadas -->
+    <g transform="translate(-94, 94)">
+      <rect width="188" height="38" rx="19" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#sqSoftShadow)" />
+      <circle cx="22" cy="19" r="9" fill="#10b981" />
+      <path d="M 17.5 19 L 21 22.5 L 26.5 15.5" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="38" y="23.5" class="text-font" font-size="10.5" font-weight="800" fill="#0f172a" letter-spacing="0.5">
+        TIENDAS VERIFICADAS
+      </text>
+    </g>
+  </g>
+
+  <!-- Nombre de Marca: Prender Shoppers -->
+  <g transform="translate(300, 422)">
+    <text class="title-font" font-size="42" text-anchor="middle" letter-spacing="-1">
+      <tspan fill="#0f172a">Prender</tspan><tspan fill="url(#sqPrimaryGrad)">Shoppers</tspan>
+    </text>
+  </g>
+
+  <!-- Tagline / Subtítulo -->
+  <g transform="translate(300, 458)">
+    <text class="text-font" font-size="14.5" fill="#64748b" font-weight="700" text-anchor="middle" letter-spacing="0.8">
+      PLATAFORMA DE COMERCIOS LOCALES
+    </text>
+  </g>
+
+  <!-- Separador fino -->
+  <line x1="160" y1="492" x2="440" y2="492" stroke="#e2e8f0" stroke-width="1" />
+
+  <!-- Dominio web inferior -->
+  <g transform="translate(300, 528)">
+    <g transform="translate(-105, 0)">
+      <circle cx="0" cy="-5" r="4.5" fill="#06b6d4" />
+      <text x="14" y="0" class="title-font" font-size="16.5" fill="#4f46e5" letter-spacing="0.3">
+        shoppers.prender.store
+      </text>
+    </g>
+  </g>
+</svg>
+`;
+
+  const bannerOutputPath = path.join(__dirname, '../public/og-storefront.png');
+  const logoOutputPath = path.join(__dirname, '../public/og-logo.png');
   const appOgPath = path.join(__dirname, '../src/app/opengraph-image.png');
   const appTwitterPath = path.join(__dirname, '../src/app/twitter-image.png');
 
-  console.log('Generando imagen OpenGraph...');
+  console.log('Generando imágenes OpenGraph (Modo Claro - Landing)...');
 
-  const imageBuffer = await sharp(Buffer.from(svg))
-    .png({
-      quality: 90,
-      compressionLevel: 9,
-      palette: true,
-      colors: 128,
-    })
+  // Guardar Banner (1200x630)
+  const bannerBuffer = await sharp(Buffer.from(bannerSvg))
+    .png({ quality: 90, compressionLevel: 9, palette: true, colors: 128 })
     .toBuffer();
 
-  fs.writeFileSync(outputPath, imageBuffer);
-  console.log(`Guardado en public: ${outputPath} (${(imageBuffer.length / 1024).toFixed(1)} KB)`);
+  fs.writeFileSync(bannerOutputPath, bannerBuffer);
+  fs.writeFileSync(appOgPath, bannerBuffer);
+  fs.writeFileSync(appTwitterPath, bannerBuffer);
+  console.log(`Banner guardado: ${bannerOutputPath} (${(bannerBuffer.length / 1024).toFixed(1)} KB)`);
 
-  // Guardar también en src/app/ para soporte nativo de Next.js App Router
-  fs.writeFileSync(appOgPath, imageBuffer);
-  console.log(`Guardado en app: ${appOgPath}`);
+  // Guardar Logo Cuadrado (600x600)
+  const logoSquareBuffer = await sharp(Buffer.from(squareLogoSvg))
+    .png({ quality: 90, compressionLevel: 9, palette: true, colors: 128 })
+    .toBuffer();
 
-  fs.writeFileSync(appTwitterPath, imageBuffer);
-  console.log(`Guardado en twitter: ${appTwitterPath}`);
+  fs.writeFileSync(logoOutputPath, logoSquareBuffer);
+  console.log(`Logo cuadrado guardado: ${logoOutputPath} (${(logoSquareBuffer.length / 1024).toFixed(1)} KB)`);
 
-  console.log('Generación completada exitosamente.');
+  console.log('¡Todas las imágenes OG fueron generadas exitosamente!');
 }
 
-generateOgImage().catch((err) => {
-  console.error('Error generando OG image:', err);
+generateOgImages().catch((err) => {
+  console.error('Error generando imágenes OG:', err);
   process.exit(1);
 });
