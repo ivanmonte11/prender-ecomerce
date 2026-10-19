@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
 import { StoreUnavailable } from '@/components/store/StoreUnavailable';
 import { StoreCatalog } from '@/components/store/StoreCatalog';
@@ -8,6 +9,79 @@ interface StorePageProps {
     params: Promise<{
         slug: string;
     }>;
+}
+
+
+export async function generateMetadata({ params }: StorePageProps): Promise<Metadata> {
+    const { slug } = await params;
+    const tenant = await prisma.tenant.findUnique({
+        where: { slug },
+        select: {
+            name: true,
+            category: true,
+            logoUrl: true,
+            bannerUrl: true,
+            address: true,
+        },
+    });
+
+    if (!tenant) {
+        return {
+            title: 'Tienda no encontrada | Prender Shoppers',
+        };
+    }
+
+    const title = `${tenant.name} | Catálogo Online Oficial`;
+    const description = `Comprá online en ${tenant.name}${tenant.category ? ` (${tenant.category})` : ''}. Catálogo con stock en vivo y pedidos directos por WhatsApp con Prender ERP.`;
+    const storeUrl = `https://shoppers.prender.store/store/${slug}`;
+    
+    const ogImages = tenant.logoUrl
+        ? [
+            {
+                url: tenant.logoUrl,
+                alt: `Logo de ${tenant.name}`,
+            },
+            {
+                url: 'https://shoppers.prender.store/og-storefront.png',
+                width: 1200,
+                height: 630,
+                alt: 'Prender Shoppers Marketplace',
+            },
+        ]
+        : [
+            {
+                url: 'https://shoppers.prender.store/og-storefront.png',
+                width: 1200,
+                height: 630,
+                alt: 'Prender Shoppers Marketplace',
+            },
+            {
+                url: 'https://shoppers.prender.store/og-logo.png',
+                width: 600,
+                height: 600,
+                alt: 'Logo Oficial Prender Shoppers',
+            },
+        ];
+
+    return {
+        title,
+        description,
+        openGraph: {
+            title,
+            description,
+            url: storeUrl,
+            siteName: 'Prender Shoppers Marketplace',
+            type: 'website',
+            locale: 'es_AR',
+            images: ogImages,
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title,
+            description,
+            images: tenant.logoUrl ? [tenant.logoUrl] : ['https://shoppers.prender.store/og-storefront.png'],
+        },
+    };
 }
 
 export default async function StorePage({ params }: StorePageProps) {

@@ -1,6 +1,8 @@
 {
-  "name": "Shoppers",
+  "name": "Prender Shoppers - Marketplace",
   "short_name": "Shoppers",
+  "description": "Marketplace oficial de comercios y tiendas locales en Argentina",
+  "start_url": "/",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -15,7 +17,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
   "display": "standalone"
 }

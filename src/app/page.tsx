@@ -8,10 +8,42 @@ import { HowItWorksSection } from '@/components/landing/HowItWorksSection';
 import { MerchantCtaSection } from '@/components/landing/MerchantCtaSection';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 
+const BASE_URL =
+  process.env.NEXT_PUBLIC_BASE_URL || 'https://shoppers.prender.store';
+
 export const metadata: Metadata = {
-  title: 'Prender Stores | Marketplace de Comercios y Tiendas Locales',
+  title: 'Prender Shoppers | Marketplace Oficial de Comercios y Tiendas Locales',
   description:
-    'Explorá catálogos oficiales de comercios locales. Comprá directo por WhatsApp sin comisiones ni intermediarios, con stock en vivo verificado por Prender ERP.',
+    'Plataforma marketplace para descubrir y comprar en tiendas locales. Catálogos oficiales con fotos, precios y stock sincronizados en tiempo real por Prender ERP. Comprá directo por WhatsApp sin intermediarios.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'Prender Shoppers | Marketplace Oficial de Comercios y Tiendas Locales',
+    description:
+      'Descubrí y comprá en comercios locales desde una sola plataforma marketplace. Stock en tiempo real y pedidos directos por WhatsApp sin comisiones ni intermediarios.',
+    url: BASE_URL,
+    siteName: 'Prender Shoppers Marketplace',
+    locale: 'es_AR',
+    type: 'website',
+    images: [
+      {
+        url: `${BASE_URL}/og-storefront.png`,
+        secureUrl: `${BASE_URL}/og-storefront.png`,
+        width: 1200,
+        height: 630,
+        alt: 'Prender Shoppers - Plataforma Marketplace de Tiendas Locales',
+        type: 'image/png',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Prender Shoppers | Marketplace Oficial de Comercios y Tiendas Locales',
+    description:
+      'Plataforma marketplace de comercios locales. Catálogos en vivo y pedidos directos por WhatsApp sin comisiones.',
+    images: [`${BASE_URL}/og-storefront.png`],
+  },
 };
 
 export const revalidate = 60; // Revalidación ISR cada 60 segundos

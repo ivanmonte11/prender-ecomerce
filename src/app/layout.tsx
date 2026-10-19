@@ -14,35 +14,42 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+const BASE_URL =
+  process.env.NEXT_PUBLIC_BASE_URL || "https://shoppers.prender.store";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
   title: {
-    default: "Prender Stores - Plataforma Oficial de Tiendas Locales",
-    template: "%s | Prender Stores",
+    default: "Prender Shoppers | Marketplace Oficial de Comercios y Tiendas Locales",
+    template: "%s | Prender Shoppers Marketplace",
   },
   description:
-    "Explorá catálogos oficiales de comercios locales, realizá tus pedidos online y coordiná la entrega directamente por WhatsApp sin intermediarios.",
+    "Plataforma marketplace de comercios y tiendas locales. Explorá catálogos oficiales con stock sincronizado en tiempo real por Prender ERP y realizá tus pedidos directos por WhatsApp sin comisiones ni intermediarios.",
   keywords: [
-    "tiendas online",
-    "catálogo digital",
+    "marketplace",
+    "plataforma marketplace",
+    "marketplace argentina",
+    "tiendas online locales",
+    "catálogos digitales",
+    "comercios de cercanía",
     "compras por whatsapp",
-    "comercios locales",
     "pedidos directos",
     "argentina",
+    "prender shoppers",
     "prender store",
     "prender erp",
-    "ecommerce local",
+    "ecommerce local argentina",
   ],
-  authors: [{ name: "Prender", url: "https://shoppers.prender.store" }],
-  creator: "Prender",
+  authors: [{ name: "Prender Shoppers", url: BASE_URL }],
+  creator: "Prender Shoppers",
   publisher: "Prender",
+  category: "shopping",
+  classification: "Marketplace / E-commerce",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL || "https://shoppers.prender.store"
-  ),
   alternates: {
     canonical: "/",
   },
@@ -50,10 +57,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon-16x16.png", type: "image/png", sizes: "16x16" },
-      { url: "/icon-32x32.png", type: "image/png", sizes: "32x32" },
-      { url: "/icon-192x192.png", type: "image/png", sizes: "192x192" },
-      { url: "/icon-512x512.png", type: "image/png", sizes: "512x512" },
+      { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/web-app-manifest-192x192.png", type: "image/png", sizes: "192x192" },
+      { url: "/web-app-manifest-512x512.png", type: "image/png", sizes: "512x512" },
     ],
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
@@ -63,19 +70,28 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 
   openGraph: {
-    title: "Prender Stores - Directorio Oficial de Tiendas Online",
+    title: "Prender Shoppers | Marketplace Oficial de Comercios y Tiendas Locales",
     description:
-      "Explorá comercios verificados, revisá sus catálogos actualizados en tiempo real y hace tus compras directo por WhatsApp.",
-    url: process.env.NEXT_PUBLIC_BASE_URL || "https://shoppers.prender.store",
-    siteName: "Prender Stores",
+      "Descubrí y comprá en múltiples tiendas locales desde una sola plataforma marketplace. Catálogos digitales actualizados, stock en vivo y pedidos directos por WhatsApp sin intermediarios.",
+    url: BASE_URL,
+    siteName: "Prender Shoppers Marketplace",
     type: "website",
     locale: "es_AR",
     images: [
       {
-        url: "/og-storefront.png",
+        url: `${BASE_URL}/og-storefront.png`,
+        secureUrl: `${BASE_URL}/og-storefront.png`,
         width: 1200,
         height: 630,
-        alt: "Prender Stores - Marketplace de Tiendas Locales",
+        alt: "Prender Shoppers - Plataforma Marketplace de Tiendas Locales",
+        type: "image/png",
+      },
+      {
+        url: `${BASE_URL}/og-logo.png`,
+        secureUrl: `${BASE_URL}/og-logo.png`,
+        width: 600,
+        height: 600,
+        alt: "Logo Oficial Prender Shoppers",
         type: "image/png",
       },
     ],
@@ -84,10 +100,10 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Prender Stores - Tiendas Online Locales",
+    title: "Prender Shoppers | Marketplace Oficial de Comercios y Tiendas Locales",
     description:
-      "Comprá directamente en tus comercios preferidos sin intermediarios.",
-    images: ["/og-storefront.png"],
+      "Plataforma marketplace de tiendas locales. Catálogos en vivo y pedidos directos por WhatsApp sin comisiones ni intermediarios.",
+    images: [`${BASE_URL}/og-storefront.png`],
   },
 
   robots: {
@@ -103,14 +119,14 @@ export const metadata: Metadata = {
   },
 
   appleWebApp: {
-    title: "Prender Stores",
+    title: "Prender Shoppers",
     statusBarStyle: "black-translucent",
     startupImage: "/apple-touch-icon.png",
   },
 
   other: {
-    "application-name": "PrenderStores",
-    "theme-color": "#ffffff",
+    "application-name": "PrenderShoppers",
+    "theme-color": "#0f172a",
   },
 };
 
