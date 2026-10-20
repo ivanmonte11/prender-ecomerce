@@ -14,7 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
-import { StoreTenant, CheckoutPayload } from '@/types/store';
+import { StoreTenant, CheckoutPayload, CartItem } from '@/types/store';
 import { formatPrice, generateWhatsAppOrderUrl } from '@/lib/whatsapp';
 
 interface CartDrawerProps {
@@ -35,10 +35,12 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
     closeCart,
     totalItemsCount,
     subtotal,
+    transferSubtotal,
     shippingFee,
     isFreeShipping,
     amountForFreeShipping,
     total,
+    transferTotal,
   } = useCart();
 
   const [customerName, setCustomerName] = useState('');
@@ -83,9 +85,12 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
         deliveryType,
         address: deliveryType === 'DELIVERY' ? address.trim() : undefined,
         notes: notes.trim() || undefined,
-        items: items.map((item) => ({
+        items: items.map((item: CartItem) => ({
           productId: item.productId,
           productName: item.name,
+          selectedSize: item.selectedSize || undefined,
+          selectedColor: item.selectedColor || undefined,
+          transferPrice: item.transferPrice || undefined,
           quantity: item.quantity,
           unitPrice: item.price,
           subtotal: item.price * item.quantity,
@@ -126,6 +131,7 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
       const orderNumber = data.orderNumber || 'WEB-PEDIDO';
 
       // 2. Generate WhatsApp URL (aprovecha la generada por el backend si existe, o fallback local)
+      const currentShippingFee = deliveryType === 'DELIVERY' ? (isFreeShipping ? 0 : shippingFee) : 0;
       const whatsappUrl = data.whatsappUrl || generateWhatsAppOrderUrl({
         orderNumber,
         storeName: tenant.name,
@@ -135,15 +141,22 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
         deliveryType,
         address: deliveryType === 'DELIVERY' ? address.trim() : undefined,
         notes: notes.trim() || undefined,
-        items: items.map((i) => ({
+        items: items.map((i: CartItem) => ({
           name: i.name,
           quantity: i.quantity,
           unitPrice: i.price,
+          transferPrice: i.transferPrice,
+          selectedSize: i.selectedSize,
+          selectedColor: i.selectedColor,
           saleType: i.saleType,
         })),
         subtotal,
-        shippingFee: deliveryType === 'DELIVERY' ? (isFreeShipping ? 0 : shippingFee) : 0,
+        transferSubtotal,
+        shippingFee: currentShippingFee,
         total,
+        transferTotal: deliveryType === 'DELIVERY'
+          ? transferSubtotal + currentShippingFee
+          : transferSubtotal,
       });
 
       // 3. Clear cart & open WhatsApp
@@ -255,11 +268,12 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
 
                 {/* Items List */}
                 <div className="space-y-3 divide-y divide-gray-100">
-                  {items.map((item) => {
+                  {items.map((item: CartItem) => {
                     const isWeight = item.saleType === 'weight';
                     const step = isWeight ? 0.25 : 1;
+                    const itemKey = item.itemKey || item.productId;
                     return (
-                      <div key={item.productId} className="pt-3 first:pt-0 flex gap-3 items-center">
+                      <div key={itemKey} className="pt-3 first:pt-0 flex gap-3 items-center">
                         <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
                           {item.image ? (
                             <img
@@ -276,9 +290,38 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
                           <h4 className="font-bold text-gray-900 text-xs sm:text-sm truncate">
                             {item.name}
                           </h4>
-                          <p className="text-[11px] text-gray-500">
-                            {formatPrice(item.price)} {isWeight ? 'x kg' : 'c/u'}
-                          </p>
+
+                          {/* Selected Variants Badges */}
+                          {(item.selectedSize || item.selectedColor) && (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5 mb-1">
+                              {item.selectedSize && (
+                                <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-100">
+                                  Talle: {item.selectedSize}
+                                </span>
+                              )}
+                              {item.selectedColor && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
+                                  <span
+                                    className="w-2 h-2 rounded-full border border-black/10 shrink-0"
+                                    style={{ backgroundColor: item.selectedColor.hex }}
+                                  />
+                                  {item.selectedColor.name}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] text-gray-500">
+                              {formatPrice(item.price)} {isWeight ? 'x kg' : 'c/u'}
+                            </span>
+                            {item.transferPrice && item.transferPrice < item.price && (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60">
+                                Transf: {formatPrice(item.transferPrice)}
+                              </span>
+                            )}
+                          </div>
+
                           <p
                             className="text-xs font-black mt-0.5"
                             style={{ color: 'var(--brand-primary, #2563eb)' }}
@@ -291,7 +334,7 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
                         <div className="flex items-center gap-1.5 shrink-0">
                           <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 p-0.5">
                             <button
-                              onClick={() => updateQuantity(item.productId, item.quantity - step)}
+                              onClick={() => updateQuantity(itemKey, item.quantity - step)}
                               className="w-6 h-6 flex items-center justify-center rounded-md bg-white text-gray-700 hover:bg-gray-100 shadow-2xs transition-colors cursor-pointer"
                               aria-label="Restar"
                             >
@@ -302,7 +345,7 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
                               {isWeight ? 'kg' : ''}
                             </span>
                             <button
-                              onClick={() => updateQuantity(item.productId, item.quantity + step)}
+                              onClick={() => updateQuantity(itemKey, item.quantity + step)}
                               style={{ backgroundColor: 'var(--brand-primary, #2563eb)' }}
                               className="w-6 h-6 flex items-center justify-center rounded-md text-white hover:brightness-110 shadow-2xs transition-colors cursor-pointer"
                               aria-label="Sumar"
@@ -312,7 +355,7 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
                           </div>
 
                           <button
-                            onClick={() => removeItem(item.productId)}
+                            onClick={() => removeItem(itemKey)}
                             className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                             aria-label="Eliminar producto"
                           >
@@ -478,6 +521,26 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
                   <span>Total</span>
                   <span style={{ color: 'var(--brand-primary, #2563eb)' }}>{formatPrice(total)}</span>
                 </div>
+
+                {/* Transfer Discount Highlight Card */}
+                {transferTotal < total && (
+                  <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-950 flex items-center justify-between shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">💰</span>
+                      <div>
+                        <p className="font-bold text-xs text-emerald-900 leading-tight">
+                          Total Transferencia / Efectivo
+                        </p>
+                        <p className="text-[10px] text-emerald-700 font-medium">
+                          ¡Ahorrás {formatPrice(total - transferTotal)}!
+                        </p>
+                      </div>
+                    </div>
+                    <span className="font-black text-emerald-800 text-sm">
+                      {formatPrice(transferTotal)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button

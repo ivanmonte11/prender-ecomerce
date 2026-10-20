@@ -85,6 +85,16 @@ export async function POST(req: NextRequest) {
 
     const total = subtotal + shippingFee;
 
+    // Calcular subtotal y total con precio de transferencia si aplica
+    const transferSubtotal = items.reduce((sum: number, item: any) => {
+      const q = Math.max(0, Number(item.quantity) || 0);
+      const effPrice = (item.transferPrice && Number(item.transferPrice) > 0)
+        ? Number(item.transferPrice)
+        : Math.max(0, Number(item.unitPrice) || 0);
+      return sum + q * effPrice;
+    }, 0);
+    const transferTotal = transferSubtotal + shippingFee;
+
     // 4. Generación segura de número correlativo de orden (#WEB-XXXX)
     const randomSuffix = Math.floor(100 + Math.random() * 900);
     const orderNumber = `#WEB-${Date.now().toString().slice(-4)}${randomSuffix}`;
@@ -103,13 +113,20 @@ export async function POST(req: NextRequest) {
         total,
         status: 'PENDING',
         items: {
-          create: items.map((item: any) => ({
-            productId: item.productId,
-            productName: item.productName || 'Producto',
-            quantity: Number(item.quantity),
-            unitPrice: Number(item.unitPrice),
-            subtotal: Number(item.quantity) * Number(item.unitPrice),
-          })),
+          create: items.map((item: any) => {
+            const variantParts: string[] = [];
+            if (item.selectedSize) variantParts.push(`Talle: ${item.selectedSize}`);
+            if (item.selectedColor?.name) variantParts.push(`Color: ${item.selectedColor.name}`);
+            const variantSuffix = variantParts.length > 0 ? ` (${variantParts.join(' | ')})` : '';
+
+            return {
+              productId: item.productId,
+              productName: `${item.productName || 'Producto'}${variantSuffix}`,
+              quantity: Number(item.quantity),
+              unitPrice: Number(item.unitPrice),
+              subtotal: Number(item.quantity) * Number(item.unitPrice),
+            };
+          }),
         },
       },
       include: {
@@ -120,7 +137,7 @@ export async function POST(req: NextRequest) {
     // 6. Formatear y limpiar teléfono de WhatsApp destino
     const cleanPhone = (tenant.phone || '').replace(/\D/g, '');
 
-    // 7. Generar enlace de WhatsApp
+    // 7. Generar enlace de WhatsApp con variantes y precios especiales
     const whatsappUrl = generateWhatsAppOrderUrl({
       orderNumber: order.orderNumber,
       storeName: tenant.name,
@@ -134,10 +151,16 @@ export async function POST(req: NextRequest) {
         name: i.productName,
         quantity: i.quantity,
         unitPrice: i.unitPrice,
+        transferPrice: i.transferPrice,
+        selectedSize: i.selectedSize,
+        selectedColor: i.selectedColor,
+        saleType: i.saleType,
       })),
       subtotal,
+      transferSubtotal,
       shippingFee,
       total,
+      transferTotal,
     });
 
     return NextResponse.json({

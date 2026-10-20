@@ -590,6 +590,13 @@ model Product {
   publicadoWeb Boolean  @default(false)
   images       String[] // Fotos extra desde Supabase Storage
 
+  // 🏷️ PRECIOS DIFERENCIADOS Y VARIANTES FLEXIBLES
+  transferPrice Decimal?
+  cardPrice     Decimal?
+  hasVariants   Boolean   @default(false)
+  sizes         String[]  @default([])
+  colors        Json?
+
   saleItems      SaleItem[]
   refundItems    RefundItem[]
   storeInventory StoreInventory[]

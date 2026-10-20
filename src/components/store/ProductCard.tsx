@@ -80,11 +80,21 @@ export function ProductCard({ product }: ProductCardProps) {
                 {product.description}
               </p>
             )}
+
+            {/* Discrete indicator for variants */}
+            {(product.hasVariants || (product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)) && (
+              <div className="pt-1 flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md border border-violet-100">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
+                  Talles / Colores disponibles
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Pricing & Add to Cart Area */}
-          <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
-            <div className="flex flex-col">
+          <div className="pt-3 border-t border-gray-100 flex items-end justify-between gap-2">
+            <div className="flex flex-col min-w-0">
               <span className="text-[11px] text-gray-400 font-medium leading-none mb-0.5">
                 {isWeight ? 'Precio x kg' : 'Precio'}
               </span>
@@ -94,11 +104,32 @@ export function ProductCard({ product }: ProductCardProps) {
               >
                 {formatPrice(product.price)}
               </span>
+
+              {/* Transfer price badge if lower than list price */}
+              {product.transferPrice && product.transferPrice < product.price ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/70 mt-1 max-w-fit">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  Efectivo/Transf: {formatPrice(product.transferPrice)}
+                </span>
+              ) : null}
             </div>
 
             {/* Action Buttons */}
             <div>
-              {currentCartQty > 0 ? (
+              {(product.hasVariants || (product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)) ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDetailOpen(true);
+                  }}
+                  style={{ backgroundColor: 'var(--brand-primary, #2563eb)' }}
+                  className="flex items-center gap-1.5 px-3 py-2 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow-md transition-all active:scale-95 hover:brightness-105 cursor-pointer shrink-0"
+                  aria-label="Ver opciones de variantes"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>{currentCartQty > 0 ? `Elegir (${currentCartQty})` : 'Elegir'}</span>
+                </button>
+              ) : currentCartQty > 0 ? (
                 <div 
                   style={{
                     borderColor: 'color-mix(in srgb, var(--brand-primary, #2563eb) 25%, transparent)',

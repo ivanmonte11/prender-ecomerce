@@ -28,11 +28,21 @@ export interface StoreTenant {
   promoBanners?: StorePromoBanner[] | null;
 }
 
+export interface ProductColor {
+  name: string;
+  hex: string;
+}
+
 export interface StoreProduct {
   id: string;
   name: string;
   description: string | null;
   price: number;
+  transferPrice?: number | null;
+  cardPrice?: number | null;
+  hasVariants?: boolean;
+  sizes?: string[];
+  colors?: ProductColor[] | null;
   quantity: number;
   category: string;
   image: string | null;
@@ -44,9 +54,14 @@ export interface StoreProduct {
 }
 
 export interface CartItem {
+  itemKey?: string; // Llave única compuesta: `${productId}_${selectedSize || ''}_${selectedColor?.name || ''}`
   productId: string;
   name: string;
   price: number;
+  transferPrice?: number | null;
+  cardPrice?: number | null;
+  selectedSize?: string | null;
+  selectedColor?: ProductColor | null;
   quantity: number;
   saleType: string;
   image: string | null;
@@ -69,6 +84,9 @@ export interface CheckoutPayload extends CheckoutCustomerData {
   items: {
     productId: string;
     productName: string;
+    selectedSize?: string | null;
+    selectedColor?: ProductColor | null;
+    transferPrice?: number | null;
     quantity: number;
     unitPrice: number;
     subtotal: number;

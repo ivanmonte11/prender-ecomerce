@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
-import { CartItem, DeliveryType, StoreProduct } from '@/types/store';
+import { CartItem, DeliveryType, ProductColor, StoreProduct } from '@/types/store';
 
 interface TenantCartConfig {
   id: string;
@@ -14,12 +14,17 @@ interface TenantCartConfig {
   secondaryColor?: string | null;
 }
 
+export interface AddItemOptions {
+  size?: string | null;
+  color?: ProductColor | null;
+}
+
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: StoreProduct, qty?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  getItemQuantity: (productId: string) => number;
+  addItem: (product: StoreProduct, qty?: number, options?: AddItemOptions) => void;
+  removeItem: (itemKeyOrId: string) => void;
+  updateQuantity: (itemKeyOrId: string, quantity: number) => void;
+  getItemQuantity: (productId: string, size?: string | null, colorName?: string | null) => number;
   clearCart: () => void;
   
   deliveryType: DeliveryType;
@@ -38,10 +43,12 @@ interface CartContextType {
 
   totalItemsCount: number;
   subtotal: number;
+  transferSubtotal: number;
   shippingFee: number;
   isFreeShipping: boolean;
   amountForFreeShipping: number;
   total: number;
+  transferTotal: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -103,24 +110,36 @@ export function CartProvider({
     setTenantConfigState(config);
   };
 
-  const addItem = (product: StoreProduct, qty: number = 1) => {
+  const buildItemKey = (productId: string, size?: string | null, colorName?: string | null) => {
+    return `${productId}_${size || ''}_${colorName || ''}`;
+  };
+
+  const addItem = (product: StoreProduct, qty: number = 1, options?: AddItemOptions) => {
     const step = product.saleType === 'weight' ? 0.25 : 1;
     const addQuantity = qty || step;
+    const size = options?.size || null;
+    const color = options?.color || null;
+    const itemKey = buildItemKey(product.id, size, color?.name);
 
     setItems((prev) => {
-      const existing = prev.find((i) => i.productId === product.id);
+      const existing = prev.find((i) => (i.itemKey || i.productId) === itemKey);
       if (existing) {
         const newQty = Math.round((existing.quantity + addQuantity) * 1000) / 1000;
         return prev.map((item) =>
-          item.productId === product.id ? { ...item, quantity: newQty } : item
+          (item.itemKey || item.productId) === itemKey ? { ...item, quantity: newQty } : item
         );
       }
       return [
         ...prev,
         {
+          itemKey,
           productId: product.id,
           name: product.name,
           price: product.price,
+          transferPrice: product.transferPrice ?? null,
+          cardPrice: product.cardPrice ?? null,
+          selectedSize: size,
+          selectedColor: color,
           quantity: addQuantity,
           saleType: product.saleType,
           image: product.image || (product.images && product.images[0]) || null,
@@ -130,24 +149,32 @@ export function CartProvider({
     });
   };
 
-  const removeItem = (productId: string) => {
-    setItems((prev) => prev.filter((i) => i.productId !== productId));
+  const removeItem = (itemKeyOrId: string) => {
+    setItems((prev) => prev.filter((i) => (i.itemKey || i.productId) !== itemKeyOrId && i.productId !== itemKeyOrId));
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (itemKeyOrId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(itemKeyOrId);
       return;
     }
     const cleanQty = Math.round(quantity * 1000) / 1000;
     setItems((prev) =>
-      prev.map((item) => (item.productId === productId ? { ...item, quantity: cleanQty } : item))
+      prev.map((item) =>
+        (item.itemKey || item.productId) === itemKeyOrId ? { ...item, quantity: cleanQty } : item
+      )
     );
   };
 
-  const getItemQuantity = (productId: string): number => {
-    const item = items.find((i) => i.productId === productId);
-    return item ? item.quantity : 0;
+  const getItemQuantity = (productId: string, size?: string | null, colorName?: string | null): number => {
+    if (size !== undefined || colorName !== undefined) {
+      const key = buildItemKey(productId, size, colorName);
+      const item = items.find((i) => (i.itemKey || i.productId) === key);
+      return item ? item.quantity : 0;
+    }
+    return items
+      .filter((i) => i.productId === productId)
+      .reduce((acc, i) => acc + i.quantity, 0);
   };
 
   const clearCart = () => {
@@ -167,6 +194,13 @@ export function CartProvider({
 
   const subtotal = useMemo(() => {
     return items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  }, [items]);
+
+  const transferSubtotal = useMemo(() => {
+    return items.reduce((acc, item) => {
+      const effectivePrice = (item.transferPrice && item.transferPrice > 0) ? item.transferPrice : item.price;
+      return acc + effectivePrice * item.quantity;
+    }, 0);
   }, [items]);
 
   const totalItemsCount = useMemo(() => {
@@ -201,6 +235,10 @@ export function CartProvider({
     return subtotal + shippingFee;
   }, [subtotal, shippingFee]);
 
+  const transferTotal = useMemo(() => {
+    return transferSubtotal + shippingFee;
+  }, [transferSubtotal, shippingFee]);
+
   return (
     <CartContext.Provider
       value={{
@@ -222,10 +260,12 @@ export function CartProvider({
         setTenantConfig,
         totalItemsCount,
         subtotal,
+        transferSubtotal,
         shippingFee,
         isFreeShipping,
         amountForFreeShipping,
         total,
+        transferTotal,
       }}
     >
       {children}

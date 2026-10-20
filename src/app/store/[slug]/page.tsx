@@ -146,6 +146,11 @@ export default async function StorePage({ params }: StorePageProps) {
             name: true,
             description: true,
             price: true,
+            transferPrice: true,
+            cardPrice: true,
+            hasVariants: true,
+            sizes: true,
+            colors: true,
             quantity: true,
             category: true,
             image: true,
@@ -164,11 +169,16 @@ export default async function StorePage({ params }: StorePageProps) {
     // 4. Map Decimal to numbers for serialization (Tipado explícito en p)
     type DbProduct = (typeof dbProducts)[number];
 
-    const products: StoreProduct[] = dbProducts.map((p: DbProduct) => ({
+    const products: StoreProduct[] = dbProducts.map((p: any) => ({
         id: p.id,
         name: p.name,
         description: p.description,
         price: Number(p.price),
+        transferPrice: p.transferPrice ? Number(p.transferPrice) : null,
+        cardPrice: p.cardPrice ? Number(p.cardPrice) : null,
+        hasVariants: Boolean(p.hasVariants),
+        sizes: Array.isArray(p.sizes) ? p.sizes : [],
+        colors: Array.isArray(p.colors) ? p.colors : null,
         quantity: Number(p.quantity),
         category: p.category || 'General',
         image: p.image,

@@ -43,11 +43,16 @@ export interface WhatsAppOrderMessageParams {
     name: string;
     quantity: number;
     unitPrice: number;
+    transferPrice?: number | null;
+    selectedSize?: string | null;
+    selectedColor?: { name: string; hex: string } | null;
     saleType?: string;
   }[];
   subtotal: number;
+  transferSubtotal?: number;
   shippingFee: number;
   total: number;
+  transferTotal?: number;
 }
 
 export function generateWhatsAppOrderUrl(params: WhatsAppOrderMessageParams): string {
@@ -62,8 +67,10 @@ export function generateWhatsAppOrderUrl(params: WhatsAppOrderMessageParams): st
     notes,
     items,
     subtotal,
+    transferSubtotal,
     shippingFee,
     total,
+    transferTotal,
   } = params;
 
   const deliveryText =
@@ -73,9 +80,21 @@ export function generateWhatsAppOrderUrl(params: WhatsAppOrderMessageParams): st
 
   const itemsList = items
     .map((item) => {
-      const unit = item.saleType === 'weight' ? 'kg' : 'u.';
-      const formattedSubtotal = formatPrice(item.quantity * item.unitPrice);
-      return `• *${item.quantity} ${unit}* x ${item.name} (${formatPrice(item.unitPrice)}) = ${formattedSubtotal}`;
+      const unit = item.saleType === 'weight' ? 'kg' : 'x';
+      const variantParts: string[] = [];
+      if (item.selectedSize) variantParts.push(`Talle: ${item.selectedSize}`);
+      if (item.selectedColor) variantParts.push(`Color: ${item.selectedColor.name}`);
+      const variantText = variantParts.length > 0 ? ` (${variantParts.join(' | ')})` : '';
+
+      const lineTotal = item.quantity * item.unitPrice;
+      const hasTransfer = item.transferPrice && item.transferPrice < item.unitPrice;
+      const transferLineTotal = hasTransfer ? item.quantity * item.transferPrice! : null;
+
+      if (hasTransfer && transferLineTotal !== null) {
+        return `• ${item.quantity}${unit} ${item.name}${variantText} - ${formatPrice(transferLineTotal)} (Transf.) [Lista: ${formatPrice(lineTotal)}]`;
+      }
+
+      return `• ${item.quantity}${unit} ${item.name}${variantText} - ${formatPrice(lineTotal)}`;
     })
     .join('\n');
 
@@ -96,6 +115,9 @@ export function generateWhatsAppOrderUrl(params: WhatsAppOrderMessageParams): st
     text += `🚚 *Envío:* ${shippingFee === 0 ? '¡Gratis!' : formatPrice(shippingFee)}\n`;
   }
   text += `💰 *TOTAL A ABONAR: ${formatPrice(total)}*\n`;
+  if (transferTotal && transferTotal < total) {
+    text += `✨ *Total con Transferencia / Efectivo: ${formatPrice(transferTotal)}*\n`;
+  }
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `¡Hola! Acabo de registrar este pedido a través de la tienda web. ¿Podrían confirmarme la recepción y los pasos para el pago? Muchas gracias! ✨`;
 
