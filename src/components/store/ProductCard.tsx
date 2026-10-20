@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Minus, ShoppingBag, Package, Scale, Eye } from 'lucide-react';
+import { Plus, Minus, ShoppingBag, Package, Scale, Eye, Camera } from 'lucide-react';
 import { StoreProduct } from '@/types/store';
 import { formatPrice } from '@/lib/whatsapp';
+import { getProductImages } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
 import { ProductDetailModal } from './ProductDetailModal';
 
@@ -20,7 +21,8 @@ export function ProductCard({ product }: ProductCardProps) {
   const step = isWeight ? 0.25 : 1;
   const minQty = isWeight ? 0.25 : 1;
 
-  const imageSrc = product.image || (product.images && product.images[0]) || null;
+  const productImages = getProductImages(product);
+  const imageSrc = productImages[0] || null;
 
   return (
     <>
@@ -63,6 +65,14 @@ export function ProductCard({ product }: ProductCardProps) {
               <Eye className="w-3.5 h-3.5" />
             </div>
           </div>
+
+          {/* Multiple Photos Badge Indicator */}
+          {productImages.length > 1 && (
+            <div className="absolute bottom-2.5 right-2.5 pointer-events-none flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-black/60 text-white rounded-full backdrop-blur-xs shadow-xs">
+              <Camera className="w-3 h-3" />
+              <span>{productImages.length}</span>
+            </div>
+          )}
         </div>
 
         {/* Info & Price */}

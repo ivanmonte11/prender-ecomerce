@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Plus,
@@ -11,9 +11,13 @@ import {
   Check,
   AlertCircle,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Camera,
 } from 'lucide-react';
 import { StoreProduct, ProductColor } from '@/types/store';
 import { formatPrice } from '@/lib/whatsapp';
+import { getProductImages } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
 
 interface ProductDetailModalProps {
@@ -24,12 +28,22 @@ interface ProductDetailModalProps {
 export function ProductDetailModal({ product, onClose }: ProductDetailModalProps) {
   const { addItem, getItemQuantity, updateQuantity } = useCart();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   // Variant selections
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<ProductColor | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [addedFeedback, setAddedFeedback] = useState<boolean>(false);
+
+  // Reset index and selections when product changes
+  useEffect(() => {
+    setSelectedImageIndex(0);
+    setSelectedSize(null);
+    setSelectedColor(null);
+    setValidationError(null);
+    setAddedFeedback(false);
+  }, [product?.id]);
 
   if (!product) return null;
 
@@ -65,12 +79,38 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
   // Total quantity in cart across all variants of this product
   const totalProductCartQty = getItemQuantity(product.id);
 
-  const allImages = [
-    product.image,
-    ...(product.images || []),
-  ].filter(Boolean) as string[];
+  const productImages = getProductImages(product);
+  const displayedImage = productImages[selectedImageIndex] || productImages[0] || null;
 
-  const displayedImage = allImages[selectedImageIndex] || allImages[0] || null;
+  const handlePrevImage = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (productImages.length <= 1) return;
+    setSelectedImageIndex((prev) => (prev === 0 ? productImages.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (productImages.length <= 1) return;
+    setSelectedImageIndex((prev) => (prev === productImages.length - 1 ? 0 : prev + 1));
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const deltaX = touchStartX - touchEndX;
+    const minSwipeDistance = 40;
+
+    if (deltaX > minSwipeDistance) {
+      handleNextImage();
+    } else if (deltaX < -minSwipeDistance) {
+      handlePrevImage();
+    }
+    setTouchStartX(null);
+  };
 
   const handleAddToCart = () => {
     if (isMissingSize && isMissingColor) {
@@ -116,12 +156,17 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
         <div className="grid grid-cols-1 md:grid-cols-2 max-h-[85vh] overflow-y-auto">
           {/* Gallery / Image Section */}
           <div className="bg-gray-50/80 p-5 sm:p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100">
-            <div className="relative w-full aspect-square max-h-72 rounded-2xl overflow-hidden bg-white flex items-center justify-center border border-gray-100 shadow-inner">
+            <div
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              className="relative w-full aspect-square max-h-80 rounded-2xl overflow-hidden bg-white flex items-center justify-center border border-gray-100 shadow-inner group/gallery select-none"
+            >
               {displayedImage ? (
                 <img
                   src={displayedImage}
                   alt={product.name}
-                  className="w-full h-full object-contain p-2"
+                  className="w-full h-full object-contain p-2 transition-all duration-300"
+                  draggable={false}
                 />
               ) : (
                 <div className="text-gray-300 flex flex-col items-center gap-2">
@@ -129,31 +174,59 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                   <span className="text-xs text-gray-400 font-medium">Sin foto disponible</span>
                 </div>
               )}
+
+              {/* Navigation Controls if multiple images */}
+              {productImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handlePrevImage}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/90 hover:bg-white text-gray-800 shadow-md flex items-center justify-center transition-all cursor-pointer backdrop-blur-xs hover:scale-105 active:scale-95 border border-gray-100"
+                    aria-label="Foto anterior"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextImage}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/90 hover:bg-white text-gray-800 shadow-md flex items-center justify-center transition-all cursor-pointer backdrop-blur-xs hover:scale-105 active:scale-95 border border-gray-100"
+                    aria-label="Siguiente foto"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+
+                  {/* Photo counter badge */}
+                  <div className="absolute bottom-2.5 right-2.5 z-10 pointer-events-none flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold bg-black/60 text-white rounded-full backdrop-blur-xs shadow-xs">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>
+                      {selectedImageIndex + 1} / {productImages.length}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Thumbnails if multiple images */}
-            {allImages.length > 1 && (
-              <div className="flex gap-2 mt-4 overflow-x-auto w-full justify-center pb-1">
-                {allImages.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImageIndex(idx)}
-                    style={
-                      selectedImageIndex === idx
-                        ? {
-                            borderColor: 'var(--brand-primary, #2563eb)',
-                          }
-                        : undefined
-                    }
-                    className={`w-12 h-12 rounded-xl border-2 overflow-hidden bg-white shrink-0 cursor-pointer transition-all ${
-                      selectedImageIndex === idx
-                        ? 'ring-2 ring-black/10 scale-105'
-                        : 'border-gray-200 opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
+            {productImages.length > 1 && (
+              <div className="flex gap-2 mt-4 overflow-x-auto w-full justify-center pb-1 px-1">
+                {productImages.map((img, idx) => {
+                  const isActive = selectedImageIndex === idx;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedImageIndex(idx)}
+                      className={`w-13 h-13 sm:w-14 sm:h-14 rounded-xl border-2 overflow-hidden bg-white shrink-0 cursor-pointer transition-all ${
+                        isActive
+                          ? 'border-violet-600 ring-2 ring-violet-600/20 scale-105 shadow-xs'
+                          : 'border-gray-200 opacity-60 hover:opacity-100 hover:border-gray-300'
+                      }`}
+                      aria-label={`Ver foto ${idx + 1}`}
+                    >
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

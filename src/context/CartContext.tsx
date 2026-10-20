@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { CartItem, DeliveryType, ProductColor, StoreProduct } from '@/types/store';
+import { getProductImages } from '@/lib/products';
 
 interface TenantCartConfig {
   id: string;
@@ -142,7 +143,7 @@ export function CartProvider({
           selectedColor: color,
           quantity: addQuantity,
           saleType: product.saleType,
-          image: product.image || (product.images && product.images[0]) || null,
+          image: getProductImages(product)[0] || null,
           maxStock: product.quantity,
         },
       ];
