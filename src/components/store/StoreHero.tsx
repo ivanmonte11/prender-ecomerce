@@ -4,6 +4,7 @@ import React from 'react';
 import { MapPin, Phone, MessageCircle, Truck, Store as StoreIcon, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { StoreTenant } from '@/types/store';
 import { cleanPhoneNumber, formatPrice } from '@/lib/whatsapp';
+import { StorePromoCarousel } from './StorePromoCarousel';
 
 interface StoreHeroProps {
   tenant: StoreTenant;
@@ -182,6 +183,16 @@ export function StoreHero({ tenant }: StoreHeroProps) {
 
             </div>
           </div>
+
+          {/* Carrusel de Banners de Ofertas y Promociones */}
+          <StorePromoCarousel
+            banners={tenant.promoBanners}
+            tenantName={tenant.name}
+            phone={tenant.phone}
+            freeShippingThreshold={tenant.freeShippingThreshold}
+            primaryColor={tenant.primaryColor}
+            secondaryColor={tenant.secondaryColor}
+          />
 
         </div>
       </div>

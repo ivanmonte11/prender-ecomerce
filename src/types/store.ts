@@ -1,3 +1,14 @@
+export interface StorePromoBanner {
+  id: string;
+  imageUrl?: string | null;
+  title?: string | null;
+  subtitle?: string | null;
+  linkUrl?: string | null;
+  badge?: string | null;
+  order?: number;
+  isActive?: boolean;
+}
+
 export interface StoreTenant {
   id: string;
   name: string;
@@ -14,6 +25,7 @@ export interface StoreTenant {
   eCommerceEnabled: boolean;
   primaryColor?: string | null;
   secondaryColor?: string | null;
+  promoBanners?: StorePromoBanner[] | null;
 }
 
 export interface StoreProduct {

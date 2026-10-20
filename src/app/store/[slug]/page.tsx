@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
 import { StoreUnavailable } from '@/components/store/StoreUnavailable';
 import { StoreCatalog } from '@/components/store/StoreCatalog';
-import { StoreProduct, StoreTenant } from '@/types/store';
+import { StoreProduct, StoreTenant, StorePromoBanner } from '@/types/store';
 
 interface StorePageProps {
     params: Promise<{
@@ -179,6 +179,43 @@ export default async function StorePage({ params }: StorePageProps) {
         lowStockThreshold: p.lowStockThreshold ? Number(p.lowStockThreshold) : 5,
     }));
 
+    // 5. Cargar Banners de Ofertas (Compatible con columna JSON promoBanners o tabla promo_banners)
+    let promoBanners: StorePromoBanner[] = [];
+
+    // Intento 1: Columna JSON "promoBanners" en la tabla "tenants"
+    try {
+        const rawTenantBanners = await prisma.$queryRaw<Array<{ promoBanners?: any }>>`
+            SELECT "promoBanners" FROM "tenants" WHERE "id" = ${tenant.id} LIMIT 1
+        `;
+        if (rawTenantBanners?.[0]?.promoBanners) {
+            const raw = rawTenantBanners[0].promoBanners;
+            promoBanners = Array.isArray(raw)
+                ? raw
+                : typeof raw === 'string'
+                ? JSON.parse(raw)
+                : [];
+        }
+    } catch {
+        // Columna aún no migrada en DB
+    }
+
+    // Intento 2: Tabla relacional "promo_banners"
+    if (promoBanners.length === 0) {
+        try {
+            const rawTableBanners = await prisma.$queryRaw<Array<any>>`
+                SELECT id, "imageUrl", title, subtitle, "linkUrl", badge, "order", "isActive"
+                FROM "promo_banners"
+                WHERE "tenantId" = ${tenant.id} AND "isActive" = true
+                ORDER BY "order" ASC, "createdAt" DESC
+            `;
+            if (rawTableBanners && rawTableBanners.length > 0) {
+                promoBanners = rawTableBanners;
+            }
+        } catch {
+            // Tabla aún no creada
+        }
+    }
+
     const storeTenant: StoreTenant = {
         id: tenant.id,
         name: tenant.name,
@@ -195,6 +232,7 @@ export default async function StorePage({ params }: StorePageProps) {
         eCommerceEnabled: tenant.eCommerceEnabled,
         primaryColor: tenant.primaryColor,
         secondaryColor: tenant.secondaryColor,
+        promoBanners,
     };
 
     return <StoreCatalog tenant={storeTenant} products={products} />;
