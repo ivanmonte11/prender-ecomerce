@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { CartItem, DeliveryType, ProductColor, StoreProduct } from '@/types/store';
 import { getProductImages } from '@/lib/products';
+import { getVariantStock } from '@/lib/variant-stock';
 
 interface TenantCartConfig {
   id: string;
@@ -117,17 +118,25 @@ export function CartProvider({
 
   const addItem = (product: StoreProduct, qty: number = 1, options?: AddItemOptions) => {
     const step = product.saleType === 'weight' ? 0.25 : 1;
-    const addQuantity = qty || step;
     const size = options?.size || null;
     const color = options?.color || null;
     const itemKey = buildItemKey(product.id, size, color?.name);
+    const stock = getVariantStock(product.variantStock, size, color?.name) ?? product.quantity;
 
     setItems((prev) => {
       const existing = prev.find((i) => (i.itemKey || i.productId) === itemKey);
+      const currentQuantity = existing?.quantity || 0;
+      const addQuantity = Math.min(qty || step, Math.max(0, stock - currentQuantity));
+      if (addQuantity <= 0) return prev;
       if (existing) {
-        const newQty = Math.round((existing.quantity + addQuantity) * 1000) / 1000;
+        const newQty = Math.min(
+          stock,
+          Math.round((existing.quantity + addQuantity) * 1000) / 1000
+        );
         return prev.map((item) =>
-          (item.itemKey || item.productId) === itemKey ? { ...item, quantity: newQty } : item
+          (item.itemKey || item.productId) === itemKey
+            ? { ...item, quantity: newQty, maxStock: stock }
+            : item
         );
       }
       return [
@@ -144,7 +153,7 @@ export function CartProvider({
           quantity: addQuantity,
           saleType: product.saleType,
           image: getProductImages(product)[0] || null,
-          maxStock: product.quantity,
+          maxStock: stock,
         },
       ];
     });
@@ -159,10 +168,14 @@ export function CartProvider({
       removeItem(itemKeyOrId);
       return;
     }
-    const cleanQty = Math.round(quantity * 1000) / 1000;
     setItems((prev) =>
       prev.map((item) =>
-        (item.itemKey || item.productId) === itemKeyOrId ? { ...item, quantity: cleanQty } : item
+        (item.itemKey || item.productId) === itemKeyOrId
+          ? {
+            ...item,
+            quantity: Math.min(item.maxStock, Math.round(quantity * 1000) / 1000),
+          }
+          : item
       )
     );
   };

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import {
+  parseCheckoutStockItems,
+  validateAndReserveCheckoutStock,
+} from '@/lib/checkout-stock';
 
 interface RouteContext {
   params: Promise<{ tenant: string }>;
@@ -13,7 +17,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const store = await prisma.tenant.findUnique({
     where: { slug: tenant },
-    select: { mpEnabled: true },
+    select: { id: true, mpEnabled: true },
   });
   if (!store) {
     return NextResponse.json({ error: 'La tienda no existe.' }, { status: 404 });
@@ -23,6 +27,26 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       { error: 'Esta tienda no tiene habilitados los pagos online.' },
       { status: 403 }
     );
+  }
+
+  let checkoutBody: unknown;
+  try {
+    checkoutBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'El pedido no contiene datos válidos.' }, { status: 400 });
+  }
+  if (typeof checkoutBody !== 'object' || checkoutBody === null || !('items' in checkoutBody)) {
+    return NextResponse.json({ error: 'El pedido debe contener productos.' }, { status: 400 });
+  }
+  const stockItems = parseCheckoutStockItems(checkoutBody.items);
+  if (!stockItems) {
+    return NextResponse.json({ error: 'Los productos o cantidades del pedido no son válidos.' }, { status: 400 });
+  }
+  const stockError = await prisma.$transaction((transaction) =>
+    validateAndReserveCheckoutStock(transaction, store.id, stockItems, false)
+  );
+  if (stockError) {
+    return NextResponse.json({ error: stockError }, { status: 409 });
   }
 
   const erpBaseUrl = process.env.ERP_API_BASE_URL;
@@ -55,7 +79,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const upstreamResponse = await fetch(preferenceUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: await request.text(),
+      body: JSON.stringify(checkoutBody),
       cache: 'no-store',
     });
     const responseBody = await upstreamResponse.text();

@@ -27,8 +27,8 @@ online checkout preference requests to
 `/api/[tenant]/checkout/preference` on that service.
 
 Apply the Prisma migration with `npx prisma migrate deploy` before deploying the storefront;
-it adds `mpEnabled` and `mpPublicKey` to tenants. Online payment is offered only when
-`mpEnabled` is true.
+it adds `mpEnabled` and `mpPublicKey` to tenants, and `variantStock` to products for inventory
+by size and color. Online payment is offered only when `mpEnabled` is true.
 
 ## Learn More
 

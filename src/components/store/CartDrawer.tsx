@@ -132,6 +132,7 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
         items: items.map((item: CartItem) => ({
           productId: item.productId,
           productName: item.name,
+          saleType: item.saleType,
           selectedSize: item.selectedSize || undefined,
           selectedColor: item.selectedColor || undefined,
           transferPrice: item.transferPrice || undefined,

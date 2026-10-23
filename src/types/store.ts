@@ -35,6 +35,12 @@ export interface ProductColor {
   hex: string;
 }
 
+export interface ProductVariantStock {
+  size: string;
+  color: string;
+  stock: number;
+}
+
 export interface StoreProduct {
   id: string;
   name: string;
@@ -45,6 +51,7 @@ export interface StoreProduct {
   hasVariants?: boolean;
   sizes?: string[];
   colors?: ProductColor[] | null;
+  variantStock?: ProductVariantStock[] | null;
   quantity: number;
   category: string;
   image: string | null;
@@ -88,6 +95,7 @@ export interface CheckoutPayload extends CheckoutCustomerData {
     productName: string;
     selectedSize?: string | null;
     selectedColor?: ProductColor | null;
+    saleType?: string;
     transferPrice?: number | null;
     quantity: number;
     unitPrice: number;

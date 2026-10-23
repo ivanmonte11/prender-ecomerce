@@ -598,6 +598,7 @@ model Product {
   hasVariants   Boolean   @default(false)
   sizes         String[]  @default([])
   colors        Json?
+  variantStock  Json?
 
   saleItems      SaleItem[]
   refundItems    RefundItem[]

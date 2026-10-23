@@ -19,6 +19,7 @@ import { StoreProduct, ProductColor } from '@/types/store';
 import { formatPrice } from '@/lib/whatsapp';
 import { getProductImages } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
+import { getOptionStock, getVariantStock } from '@/lib/variant-stock';
 
 interface ProductDetailModalProps {
   product: StoreProduct | null;
@@ -26,6 +27,17 @@ interface ProductDetailModalProps {
 }
 
 export function ProductDetailModal({ product, onClose }: ProductDetailModalProps) {
+  if (!product) return null;
+  return <ProductDetailModalContent product={product} onClose={onClose} />;
+}
+
+function ProductDetailModalContent({
+  product,
+  onClose,
+}: {
+  product: StoreProduct;
+  onClose: () => void;
+}) {
   const { addItem, getItemQuantity, updateQuantity } = useCart();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -35,6 +47,7 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
   const [selectedColor, setSelectedColor] = useState<ProductColor | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [addedFeedback, setAddedFeedback] = useState<boolean>(false);
+  const [quantity, setQuantity] = useState(1);
 
   // Reset index and selections when product changes
   useEffect(() => {
@@ -43,15 +56,12 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
     setSelectedColor(null);
     setValidationError(null);
     setAddedFeedback(false);
-  }, [product?.id]);
-
-  if (!product) return null;
+    setQuantity(product?.saleType === 'weight' ? 0.25 : 1);
+  }, [product.id]);
 
   const isWeight = product.saleType === 'weight';
   const step = isWeight ? 0.25 : 1;
   const minQty = isWeight ? 0.25 : 1;
-
-  const [quantity, setQuantity] = useState<number>(minQty);
 
   const hasSizes = Boolean(
     (product.hasVariants || (product.sizes && product.sizes.length > 0)) &&
@@ -78,6 +88,29 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
 
   // Total quantity in cart across all variants of this product
   const totalProductCartQty = getItemQuantity(product.id);
+  const selectedStock = isSelectionIncomplete
+    ? null
+    : getVariantStock(product.variantStock, selectedSize, selectedColor?.name);
+  const inventoryStock = selectedStock ?? product.quantity;
+  const quantityInCart = product.variantStock == null
+    ? totalProductCartQty
+    : currentVariantCartQty;
+  const maximumQuantity = Math.floor(
+    Math.max(0, inventoryStock - quantityInCart) / step
+  ) * step;
+  const isSelectedCombinationOutOfStock = !isSelectionIncomplete && maximumQuantity < minQty;
+  const hasOutOfStockOptions = product.variantStock?.some((variant) =>
+    variant.stock === 0
+    && ((selectedSize !== null && variant.size === selectedSize)
+      || (selectedColor !== null && variant.color === selectedColor.name))
+  ) ?? false;
+
+  useEffect(() => {
+    setQuantity((currentQuantity) => {
+      if (maximumQuantity < minQty) return 0;
+      return Math.min(currentQuantity || minQty, maximumQuantity);
+    });
+  }, [maximumQuantity, minQty, product.id]);
 
   const productImages = getProductImages(product);
   const displayedImage = productImages[selectedImageIndex] || productImages[0] || null;
@@ -113,6 +146,14 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
   };
 
   const handleAddToCart = () => {
+    if (isSelectedCombinationOutOfStock) {
+      setValidationError('Sin stock en esta combinación.');
+      return;
+    }
+    if (quantity < minQty || quantity > maximumQuantity) {
+      setValidationError('La cantidad supera el stock disponible para esta combinación.');
+      return;
+    }
     if (isMissingSize && isMissingColor) {
       setValidationError('Por favor seleccioná un talle y un color para continuar.');
       return;
@@ -346,19 +387,33 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                   <div className="flex flex-wrap gap-2">
                     {product.sizes!.map((size) => {
                       const isSelected = selectedSize === size;
+                      const optionStock = getOptionStock(
+                        product.variantStock,
+                        size,
+                        null,
+                        'size'
+                      );
+                      const isOutOfStock = optionStock === 0;
                       return (
                         <button
                           key={size}
                           type="button"
+                          disabled={isOutOfStock}
                           onClick={() => {
                             setSelectedSize(size);
+                            if (
+                              selectedColor
+                              && getVariantStock(product.variantStock, size, selectedColor.name) === 0
+                            ) {
+                              setSelectedColor(null);
+                            }
                             setValidationError(null);
                           }}
-                          className={`min-w-[42px] px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer shadow-2xs ${
+                          className={`min-w-[42px] px-3.5 py-2 text-xs font-bold rounded-xl border transition-all shadow-2xs ${
                             isSelected
                               ? 'border-violet-600 bg-violet-50 text-violet-700 ring-2 ring-violet-600/20 scale-102 font-black'
                               : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                          }`}
+                          } ${isOutOfStock ? 'cursor-not-allowed opacity-40 line-through' : 'cursor-pointer'}`}
                         >
                           {size}
                         </button>
@@ -390,6 +445,13 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                   <div className="flex flex-wrap items-center gap-2.5">
                     {product.colors!.map((color, idx) => {
                       const isSelected = selectedColor?.name === color.name;
+                      const optionStock = getOptionStock(
+                        product.variantStock,
+                        color.name,
+                        selectedSize,
+                        'color'
+                      );
+                      const isOutOfStock = optionStock === 0;
                       const isWhiteOrLight =
                         color.hex.toLowerCase() === '#fff' ||
                         color.hex.toLowerCase() === '#ffffff' ||
@@ -399,19 +461,27 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                         <button
                           key={idx}
                           type="button"
-                          title={color.name}
+                          title={isOutOfStock ? `${color.name} - Sin stock` : color.name}
+                          aria-label={isOutOfStock ? `${color.name}, sin stock` : color.name}
+                          disabled={isOutOfStock}
                           onClick={() => {
+                            if (
+                              selectedSize
+                              && getVariantStock(product.variantStock, selectedSize, color.name) === 0
+                            ) {
+                              setSelectedSize(null);
+                            }
                             setSelectedColor(color);
                             setValidationError(null);
                           }}
                           style={{ backgroundColor: color.hex }}
-                          className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer relative flex items-center justify-center shadow-2xs ${
+                          className={`w-8 h-8 rounded-full border-2 transition-all relative flex items-center justify-center shadow-2xs ${
                             isSelected
                               ? 'ring-2 ring-violet-600 ring-offset-2 scale-110 border-white'
                               : isWhiteOrLight
                               ? 'border-gray-300 hover:scale-105'
                               : 'border-transparent hover:scale-105'
-                          }`}
+                          } ${isOutOfStock ? 'cursor-not-allowed opacity-40 grayscale' : 'cursor-pointer'}`}
                         >
                           {isSelected && (
                             <Check
@@ -420,11 +490,27 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                               }`}
                             />
                           )}
+                          {isOutOfStock && (
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <span className="h-0.5 w-9 rotate-45 bg-red-600 shadow-sm" />
+                            </span>
+                          )}
                         </button>
                       );
                     })}
                   </div>
+                  {hasOutOfStockOptions && (
+                    <p role="status" className="text-[11px] font-medium text-amber-700">
+                      Sin stock en esta combinación para algunas opciones.
+                    </p>
+                  )}
                 </div>
+              )}
+
+              {isSelectedCombinationOutOfStock && (
+                <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  Sin stock en esta combinación.
+                </p>
               )}
 
               {/* Validation Warning Notice */}
@@ -478,7 +564,8 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.max(minQty, Math.round((q - step) * 1000) / 1000))}
-                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-white shadow-2xs text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                    disabled={quantity <= minQty}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-white shadow-2xs text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Restar cantidad"
                   >
                     <Minus className="w-3.5 h-3.5" />
@@ -488,9 +575,10 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => Math.round((q + step) * 1000) / 1000)}
+                    disabled={quantity + step > maximumQuantity}
+                    onClick={() => setQuantity((q) => Math.min(maximumQuantity, Math.round((q + step) * 1000) / 1000))}
                     style={{ backgroundColor: 'var(--brand-primary, #2563eb)' }}
-                    className="w-9 h-9 flex items-center justify-center rounded-xl text-white shadow-2xs hover:brightness-110 transition-all cursor-pointer"
+                    className="w-9 h-9 flex items-center justify-center rounded-xl text-white shadow-2xs hover:brightness-110 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Sumar cantidad"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -501,14 +589,14 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                 <button
                   type="button"
                   onClick={handleAddToCart}
-                  disabled={isSelectionIncomplete}
+                  disabled={isSelectionIncomplete || isSelectedCombinationOutOfStock}
                   style={{
-                    backgroundColor: isSelectionIncomplete
+                    backgroundColor: isSelectionIncomplete || isSelectedCombinationOutOfStock
                       ? undefined
                       : 'var(--brand-primary, #2563eb)',
                   }}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 font-bold rounded-2xl shadow-md transition-all text-sm cursor-pointer ${
-                    isSelectionIncomplete
+                    isSelectionIncomplete || isSelectedCombinationOutOfStock
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                       : 'text-white hover:shadow-lg active:scale-98 hover:brightness-105'
                   }`}
@@ -521,6 +609,8 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                       ? 'Elegí un talle'
                       : isMissingColor
                       ? 'Elegí un color'
+                      : isSelectedCombinationOutOfStock
+                      ? 'Sin stock en esta combinación'
                       : `Agregar (${formatPrice(product.price * quantity)})`}
                   </span>
                 </button>

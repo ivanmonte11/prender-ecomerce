@@ -3,12 +3,53 @@ import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
 import { StoreUnavailable } from '@/components/store/StoreUnavailable';
 import { StoreCatalog } from '@/components/store/StoreCatalog';
-import { StoreProduct, StoreTenant, StorePromoBanner } from '@/types/store';
+import { ProductColor, StoreProduct, StoreTenant, StorePromoBanner } from '@/types/store';
+import { parseVariantStock } from '@/lib/variant-stock';
 
 interface StorePageProps {
     params: Promise<{
         slug: string;
     }>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function parseProductColors(value: unknown): ProductColor[] | null {
+    if (!Array.isArray(value)) return null;
+    return value.flatMap((color: unknown) => {
+        if (!isRecord(color) || typeof color.name !== 'string' || typeof color.hex !== 'string') {
+            return [];
+        }
+        return [{ name: color.name, hex: color.hex }];
+    });
+}
+
+function parsePromoBanners(value: unknown): StorePromoBanner[] {
+    let decoded: unknown = value;
+    if (typeof value === 'string') {
+        try {
+            decoded = JSON.parse(value);
+        } catch {
+            return [];
+        }
+    }
+    if (!Array.isArray(decoded)) return [];
+
+    return decoded.flatMap((banner: unknown) => {
+        if (!isRecord(banner) || typeof banner.id !== 'string') return [];
+        return [{
+            id: banner.id,
+            imageUrl: typeof banner.imageUrl === 'string' ? banner.imageUrl : null,
+            title: typeof banner.title === 'string' ? banner.title : null,
+            subtitle: typeof banner.subtitle === 'string' ? banner.subtitle : null,
+            linkUrl: typeof banner.linkUrl === 'string' ? banner.linkUrl : null,
+            badge: typeof banner.badge === 'string' ? banner.badge : null,
+            order: typeof banner.order === 'number' ? banner.order : undefined,
+            isActive: typeof banner.isActive === 'boolean' ? banner.isActive : undefined,
+        }];
+    });
 }
 
 
@@ -153,6 +194,7 @@ export default async function StorePage({ params }: StorePageProps) {
             hasVariants: true,
             sizes: true,
             colors: true,
+            variantStock: true,
             quantity: true,
             category: true,
             image: true,
@@ -169,9 +211,7 @@ export default async function StorePage({ params }: StorePageProps) {
     });
 
     // 4. Map Decimal to numbers for serialization (Tipado explícito en p)
-    type DbProduct = (typeof dbProducts)[number];
-
-    const products: StoreProduct[] = dbProducts.map((p: any) => ({
+    const products: StoreProduct[] = dbProducts.map((p) => ({
         id: p.id,
         name: p.name,
         description: p.description,
@@ -180,7 +220,8 @@ export default async function StorePage({ params }: StorePageProps) {
         cardPrice: p.cardPrice ? Number(p.cardPrice) : null,
         hasVariants: Boolean(p.hasVariants),
         sizes: Array.isArray(p.sizes) ? p.sizes : [],
-        colors: Array.isArray(p.colors) ? p.colors : null,
+        colors: parseProductColors(p.colors),
+        variantStock: parseVariantStock(p.variantStock),
         quantity: Number(p.quantity),
         category: p.category || 'General',
         image: p.image || (Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : null),
@@ -196,16 +237,11 @@ export default async function StorePage({ params }: StorePageProps) {
 
     // Intento 1: Columna JSON "promoBanners" en la tabla "tenants"
     try {
-        const rawTenantBanners = await prisma.$queryRaw<Array<{ promoBanners?: any }>>`
+        const rawTenantBanners = await prisma.$queryRaw<Array<{ promoBanners: unknown }>>`
             SELECT "promoBanners" FROM "tenants" WHERE "id" = ${tenant.id} LIMIT 1
         `;
         if (rawTenantBanners?.[0]?.promoBanners) {
-            const raw = rawTenantBanners[0].promoBanners;
-            promoBanners = Array.isArray(raw)
-                ? raw
-                : typeof raw === 'string'
-                ? JSON.parse(raw)
-                : [];
+            promoBanners = parsePromoBanners(rawTenantBanners[0].promoBanners);
         }
     } catch {
         // Columna aún no migrada en DB
@@ -214,7 +250,7 @@ export default async function StorePage({ params }: StorePageProps) {
     // Intento 2: Tabla relacional "promo_banners"
     if (promoBanners.length === 0) {
         try {
-            const rawTableBanners = await prisma.$queryRaw<Array<any>>`
+            const rawTableBanners = await prisma.$queryRaw<StorePromoBanner[]>`
                 SELECT id, "imageUrl", title, subtitle, "linkUrl", badge, "order", "isActive"
                 FROM "promo_banners"
                 WHERE "tenantId" = ${tenant.id} AND "isActive" = true
