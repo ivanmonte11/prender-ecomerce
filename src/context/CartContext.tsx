@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { CartItem, DeliveryType, ProductColor, StoreProduct } from '@/types/store';
 import { getProductImages } from '@/lib/products';
 
@@ -178,7 +178,7 @@ export function CartProvider({
       .reduce((acc, i) => acc + i.quantity, 0);
   };
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setItems([]);
     setNotes('');
     if (tenantConfig?.slug) {
@@ -188,7 +188,7 @@ export function CartProvider({
         console.error(e);
       }
     }
-  };
+  }, [tenantConfig?.slug]);
 
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);

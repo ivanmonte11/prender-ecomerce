@@ -12,6 +12,8 @@ import {
   AlertCircle,
   PackageCheck,
   Loader2,
+  CreditCard,
+  MessageCircle,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { StoreTenant, CheckoutPayload, CartItem } from '@/types/store';
@@ -19,6 +21,43 @@ import { formatPrice, generateWhatsAppOrderUrl } from '@/lib/whatsapp';
 
 interface CartDrawerProps {
   tenant: StoreTenant;
+}
+
+type PaymentMethod = 'WHATSAPP' | 'MERCADOPAGO';
+
+interface PreferenceResponse {
+  init_point?: string;
+  error?: string;
+}
+
+function isPreferenceResponse(value: unknown): value is PreferenceResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  const response = value as Record<string, unknown>;
+  return (response.init_point === undefined || typeof response.init_point === 'string')
+    && (response.error === undefined || typeof response.error === 'string');
+}
+
+function getMercadoPagoUrl(value: unknown): string | null {
+  if (!isPreferenceResponse(value) || !value.init_point) return null;
+  try {
+    const url = new URL(value.init_point);
+    const allowedDomains = [
+      'mercadopago.com',
+      'mercadopago.com.ar',
+      'mercadopago.com.br',
+      'mercadopago.com.mx',
+      'mercadopago.com.uy',
+      'mercadopago.com.co',
+      'mercadopago.com.pe',
+      'mercadopago.cl',
+    ];
+    const isMercadoPagoDomain = allowedDomains.some((domain) =>
+      url.hostname === domain || url.hostname.endsWith(`.${domain}`)
+    );
+    return url.protocol === 'https:' && isMercadoPagoDomain ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 export function CartDrawer({ tenant }: CartDrawerProps) {
@@ -49,6 +88,7 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
   const [address, setAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('WHATSAPP');
 
   if (!isCartOpen) return null;
 
@@ -67,6 +107,10 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
     }
     if (deliveryType === 'DELIVERY' && !address.trim()) {
       setErrorMessage('Por favor ingresá la dirección de entrega.');
+      return;
+    }
+    if (tenant.mpEnabled && paymentMethod === 'MERCADOPAGO' && !customerEmail.trim()) {
+      setErrorMessage('Por favor ingresá tu email para realizar el pago online.');
       return;
     }
     if (items.length === 0) {
@@ -99,6 +143,57 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
         shippingFee: deliveryType === 'DELIVERY' ? (isFreeShipping ? 0 : shippingFee) : 0,
         total,
       };
+
+      if (tenant.mpEnabled && paymentMethod === 'MERCADOPAGO') {
+        const returnUrl = `${window.location.origin}/store/${encodeURIComponent(tenant.slug)}/order-status`;
+        const response = await fetch(`/api/${encodeURIComponent(tenant.slug)}/checkout/preference`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...payload,
+            paymentMethod,
+            back_urls: {
+              success: returnUrl,
+              pending: returnUrl,
+              failure: returnUrl,
+            },
+            auto_return: 'approved',
+          }),
+        });
+        const responseData: unknown = await response.json();
+
+        if (!response.ok) {
+          const message = isPreferenceResponse(responseData) && typeof responseData.error === 'string'
+            ? responseData.error
+            : 'No se pudo iniciar el pago online. Intentá nuevamente.';
+          throw new Error(message);
+        }
+        const mercadoPagoUrl = getMercadoPagoUrl(responseData);
+        if (!mercadoPagoUrl) {
+          throw new Error('La respuesta de pago no contiene una dirección de Mercado Pago válida.');
+        }
+
+        sessionStorage.setItem(`prender_checkout_${tenant.slug}`, JSON.stringify({
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          customerEmail: customerEmail.trim(),
+          deliveryType,
+          address: deliveryType === 'DELIVERY' ? address.trim() : '',
+          notes: notes.trim(),
+          items: items.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            unitPrice: item.price,
+            selectedSize: item.selectedSize,
+            selectedColor: item.selectedColor?.name,
+          })),
+          subtotal,
+          shippingFee: deliveryType === 'DELIVERY' ? (isFreeShipping ? 0 : shippingFee) : 0,
+          total,
+        }));
+        window.location.assign(mercadoPagoUrl);
+        return;
+      }
 
       // 1. Send Order to Backend API
       const res = await fetch('/api/checkout', {
@@ -165,9 +260,11 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
 
       // Open WhatsApp in a new tab
       window.location.href = whatsappUrl;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error in checkout:', err);
-      setErrorMessage(err.message || 'Ocurrió un error inesperado. Por favor reintentá.');
+      setErrorMessage(err instanceof Error
+        ? err.message
+        : 'Ocurrió un error inesperado. Por favor reintentá.');
     } finally {
       setIsSubmitting(false);
     }
@@ -427,6 +524,54 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
 
                 {/* Customer Checkout Form */}
                 <form id="checkout-form" onSubmit={handleSubmitOrder} className="space-y-3 pt-2 border-t border-gray-100">
+                  {tenant.mpEnabled && (
+                    <fieldset className="space-y-2">
+                      <legend className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Método de pago
+                      </legend>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('WHATSAPP')}
+                        aria-pressed={paymentMethod === 'WHATSAPP'}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
+                          paymentMethod === 'WHATSAPP'
+                            ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <MessageCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                        <span>
+                          <span className="block text-xs font-bold text-gray-900">
+                            Acordar con el Comercio / Efectivo / Transferencia
+                          </span>
+                          <span className="block text-[11px] text-gray-500">
+                            Confirmá los detalles por WhatsApp
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('MERCADOPAGO')}
+                        aria-pressed={paymentMethod === 'MERCADOPAGO'}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
+                          paymentMethod === 'MERCADOPAGO'
+                            ? 'border-sky-500 bg-sky-50 ring-1 ring-sky-500'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <CreditCard className="w-5 h-5 text-sky-700 shrink-0" />
+                        <span>
+                          <span className="block text-xs font-bold text-gray-900">
+                            Pagar Online (Mercado Pago / Tarjeta de Crédito o Débito)
+                          </span>
+                          <span className="block text-[11px] text-gray-500">
+                            Pago seguro con Mercado Pago
+                          </span>
+                        </span>
+                      </button>
+                    </fieldset>
+                  )}
+
                   <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">
                     Datos del Pedido
                   </label>
@@ -553,12 +698,22 @@ export function CartDrawer({ tenant }: CartDrawerProps) {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Registrando pedido...</span>
+                    <span>
+                      {tenant.mpEnabled && paymentMethod === 'MERCADOPAGO'
+                        ? 'Redirigiendo a Mercado Pago...'
+                        : 'Registrando pedido...'}
+                    </span>
                   </>
                 ) : (
                   <>
-                    <PackageCheck className="w-5 h-5" />
-                    <span>Confirmar Pedido ({formatPrice(total)})</span>
+                    {tenant.mpEnabled && paymentMethod === 'MERCADOPAGO'
+                      ? <CreditCard className="w-5 h-5" />
+                      : <PackageCheck className="w-5 h-5" />}
+                    <span>
+                      {tenant.mpEnabled && paymentMethod === 'MERCADOPAGO'
+                        ? `Pagar Online (${formatPrice(total)})`
+                        : `Confirmar Pedido (${formatPrice(total)})`}
+                    </span>
                   </>
                 )}
               </button>

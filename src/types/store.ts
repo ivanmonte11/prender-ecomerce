@@ -23,6 +23,8 @@ export interface StoreTenant {
   freeShippingThreshold: number | null;
   status: string;
   eCommerceEnabled: boolean;
+  mpEnabled: boolean;
+  mpPublicKey: string | null;
   primaryColor?: string | null;
   secondaryColor?: string | null;
   promoBanners?: StorePromoBanner[] | null;

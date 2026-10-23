@@ -61,6 +61,8 @@ model Tenant {
   // 🛒 CONFIGURACIÓN E-COMMERCE / SUSCRIPCIÓN
   eCommerceEnabled Boolean @default(false)
   bannerUrl        String?
+  mpEnabled        Boolean @default(false)
+  mpPublicKey      String?
 
   gastos Gasto[]
   shipments Shipment[]
