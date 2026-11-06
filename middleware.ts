@@ -8,6 +8,8 @@ export function middleware(req: NextRequest) {
     if (
         url.pathname.startsWith('/_next') ||
         url.pathname.startsWith('/api') ||
+        url.pathname === '/store' ||
+        url.pathname.startsWith('/store/') ||
         url.pathname.includes('.')
     ) {
         return NextResponse.next();
