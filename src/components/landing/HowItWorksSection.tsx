@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, ShoppingBag, MessageCircle, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { Search, ShoppingBag, ArrowRight, ShieldCheck, Zap, CreditCard } from 'lucide-react';
 
 export function HowItWorksSection() {
   const steps = [
@@ -21,11 +21,11 @@ export function HowItWorksSection() {
     },
     {
       number: '03',
-      title: 'Coordiná directo por WhatsApp',
+      title: 'Elegí cómo pagar',
       description:
-        'El pedido llega ordenado y detallado al WhatsApp oficial del comercio. Pagás por transferencia, efectivo o tarjeta y coordinás la entrega sin intermediarios.',
-      icon: MessageCircle,
-      color: 'from-emerald-600 to-teal-600',
+        'En las tiendas habilitadas, pagá online con tarjeta de crédito o débito a través de Mercado Pago. También podés coordinar otros medios de pago y la entrega directamente con el comercio por WhatsApp.',
+      icon: CreditCard,
+      color: 'from-sky-600 to-indigo-600',
     },
   ];
 

@@ -38,7 +38,7 @@ export function LandingHero({ totalStores }: LandingHeroProps) {
         {/* Subtítulo */}
         <p className="text-slate-600 text-base sm:text-xl max-w-3xl mx-auto font-normal leading-relaxed">
           Explorá catálogos oficiales con fotos y precios actualizados en tiempo real por el sistema de cada local.
-          Realizá tu pedido online y coordiná la entrega <strong className="text-slate-900 font-semibold">directamente por WhatsApp</strong>, sin intermediarios ni costos extra.
+          Realizá tu pedido online y coordiná la entrega <strong className="text-slate-900 font-semibold">directamente por WhatsApp</strong>, sin intermediarios ni costos extra. En las tiendas habilitadas, también podés pagar online con tarjeta.
         </p>
 
         {/* Botones de Acción */}

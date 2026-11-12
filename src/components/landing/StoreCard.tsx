@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import { ExternalLink, ArrowRight, MapPin, BadgeCheck, Truck, ShoppingBag, MessageCircle } from 'lucide-react';
+import { ExternalLink, ArrowRight, MapPin, BadgeCheck, Truck, ShoppingBag, MessageCircle, CreditCard } from 'lucide-react';
 
 export interface TenantCardData {
   id: string;
@@ -11,6 +11,7 @@ export interface TenantCardData {
   bannerUrl: string | null;
   address: string | null;
   phone?: string | null;
+  mpEnabled?: boolean;
   shippingFee?: number | null;
   freeShippingThreshold?: number | null;
   _count?: {
@@ -144,6 +145,12 @@ export function StoreCard({ tenant, rootDomain }: StoreCardProps) {
               <Truck className="w-3 h-3 text-cyan-600" />
               <span>Envío / Retiro</span>
             </span>
+            {tenant.mpEnabled && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md">
+                <CreditCard className="w-3 h-3 text-sky-700" />
+                <span>Pago online · Crédito y débito</span>
+              </span>
+            )}
           </div>
         </div>
 

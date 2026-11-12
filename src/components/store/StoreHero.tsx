@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Phone, MessageCircle, Truck, Store as StoreIcon, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { MapPin, Phone, MessageCircle, Truck, Store as StoreIcon, ShieldCheck, CheckCircle2, CreditCard } from 'lucide-react';
 import { StoreTenant } from '@/types/store';
 import { cleanPhoneNumber, formatPrice } from '@/lib/whatsapp';
 import { StorePromoCarousel } from './StorePromoCarousel';
@@ -180,6 +180,32 @@ export function StoreHero({ tenant }: StoreHeroProps) {
                 <CheckCircle2 className="w-4 h-4 text-gray-500 shrink-0" />
                 <span className="font-medium">Catálogo online y pedidos directos</span>
               </div>
+
+              {tenant.mpEnabled && (
+                <>
+                  <div className="hidden sm:block w-1 h-1 rounded-full bg-gray-300" />
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <div className="flex items-center gap-1.5 font-semibold text-sky-800">
+                      <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0" />
+                      <span>Pagos online disponibles</span>
+                    </div>
+                    <div className="flex items-center gap-1.5" aria-label="Medios de pago online">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-bold text-gray-600 shadow-xs">
+                        <CreditCard className="w-3.5 h-3.5 text-sky-700" />
+                        Crédito
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-bold text-gray-600 shadow-xs">
+                        <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                        Débito
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md border border-sky-100 bg-sky-50 px-2 py-1 text-[10px] font-bold text-sky-800">
+                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-sky-600 text-[8px] font-black text-white">MP</span>
+                        Mercado Pago
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
 
             </div>
           </div>

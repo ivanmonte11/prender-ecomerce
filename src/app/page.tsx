@@ -72,6 +72,7 @@ export default async function HomePage() {
       bannerUrl: true,
       address: true,
       phone: true,
+      mpEnabled: true,
       shippingFee: true,
       freeShippingThreshold: true,
       _count: {
